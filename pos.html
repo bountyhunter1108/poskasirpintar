@@ -1253,7 +1253,11 @@
       const [error, setError] = useState('');
       const [loading, setLoading] = useState(false);
 
-
+      const [showOwnerLogin, setShowOwnerLogin] = useState(false);
+      const [ownerEmail, setOwnerEmail] = useState('');
+      const [ownerPassword, setOwnerPassword] = useState('');
+      const [ownerError, setOwnerError] = useState('');
+      const [ownerLoading, setOwnerLoading] = useState(false);
 
       const handleLogin = async (e) => {
         e.preventDefault();
@@ -1295,8 +1299,6 @@
         const safeUser = makeSafeUser(user, db);
         app.login(safeUser);
       };
-
-
 
       return (
         <div className="min-h-screen flex items-center justify-center bg-zinc-100 p-4">
@@ -1375,33 +1377,117 @@
           <div className="fixed bottom-4 right-4 z-50">
             <button
               type="button"
-              onClick={async () => {
-                setLoading(true);
-                setError('');
-                try {
-                  const cloudData = await sbFetch();
-                  if (cloudData) {
-                    const localData = getDB();
-                    const merged = mergeDB(localData, cloudData);
-                    localStorage.setItem(DB_KEY, JSON.stringify(merged));
-                  }
-                } catch(e) {}
-                const db = getDB();
-                const user = db.users.find(u => (u.email || '').trim().toLowerCase() === 'ownerpos@pos.com' && String(u.password || '').trim() === 'ownersmilepos123');
-                if (user) {
-                  const safeUser = makeSafeUser(user, db);
-                  app.login(safeUser);
-                } else {
-                  setError('Akun owner tidak ditemukan di database. Pastikan migrasi data telah berhasil.');
-                  setLoading(false);
-                }
+              onClick={() => {
+                setOwnerEmail('');
+                setOwnerPassword('');
+                setOwnerError('');
+                setShowOwnerLogin(true);
               }}
               className="bg-black hover:bg-zinc-900 text-white border border-zinc-800 rounded-full w-8 h-8 flex items-center justify-center text-xs font-bold shadow-2xl transition cursor-pointer"
-              title="Akses Sistem"
+              title="Akses Pemilik"
             >
               <span>-</span>
             </button>
           </div>
+
+          {/* Modal Input Kredensial Pemilik */}
+          {showOwnerLogin && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-[scaleIn_0.2s_ease-out] border border-zinc-200">
+                <div className="px-6 py-5 border-b border-zinc-150 flex justify-between items-center bg-zinc-50/50">
+                  <div className="text-left font-bold text-zinc-800 flex items-center gap-2">
+                    <Icon name="shield-alert" className="text-zinc-900" />
+                    <span>Akses Pemilik (Owner)</span>
+                  </div>
+                  <button onClick={() => { setShowOwnerLogin(false); setOwnerError(''); }} className="p-2 hover:bg-zinc-100 rounded-full transition"><Icon name="x" size={16} /></button>
+                </div>
+                
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setOwnerError('');
+                  setOwnerLoading(true);
+                  
+                  try {
+                    const cloudData = await sbFetch();
+                    if (cloudData) {
+                      const localData = getDB();
+                      const merged = mergeDB(localData, cloudData);
+                      localStorage.setItem(DB_KEY, JSON.stringify(merged));
+                    }
+                  } catch(err) {}
+
+                  const db = getDB();
+                  const targetEmail = ownerEmail.trim().toLowerCase();
+                  const targetPassword = ownerPassword.trim();
+                  
+                  const foundUser = db.users.find(u => 
+                    (u.email || '').trim().toLowerCase() === targetEmail && 
+                    String(u.password || '').trim() === targetPassword
+                  );
+
+                  if (foundUser) {
+                    if (foundUser.role !== 'owner') {
+                      setOwnerError('Akses Ditolak: Kredensial bukan milik akun Pemilik!');
+                      setOwnerLoading(false);
+                      return;
+                    }
+                    if (!foundUser.active) {
+                      setOwnerError('Akun Pemilik dinonaktifkan.');
+                      setOwnerLoading(false);
+                      return;
+                    }
+                    const safeUser = makeSafeUser(foundUser, db);
+                    app.login(safeUser);
+                  } else {
+                    setOwnerError('Email atau Password Pemilik tidak cocok.');
+                    setOwnerLoading(false);
+                  }
+                }} className="p-6 space-y-4 text-left">
+                  {ownerError && (
+                    <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-semibold border border-rose-100 animate-[fadeIn_0.2s]">
+                      {ownerError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Email Pemilik</label>
+                    <input 
+                      type="email" 
+                      name="owner_email_field"
+                      autoComplete="chrome-off"
+                      value={ownerEmail}
+                      onChange={e => setOwnerEmail(e.target.value)}
+                      required
+                      placeholder="Masukkan email..."
+                      className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:border-zinc-900 text-sm font-medium text-zinc-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Password Pemilik</label>
+                    <input 
+                      type="password" 
+                      name="owner_password_field"
+                      autoComplete="new-password"
+                      value={ownerPassword}
+                      onChange={e => setOwnerPassword(e.target.value)}
+                      required
+                      placeholder="Masukkan password..."
+                      className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:border-zinc-900 text-sm font-medium text-zinc-800"
+                    />
+                  </div>
+
+                  <div className="flex gap-2.5 pt-2">
+                    <button type="button" onClick={() => { setShowOwnerLogin(false); setOwnerError(''); }} className="flex-1 py-3 bg-zinc-100 text-zinc-700 rounded-xl font-semibold hover:bg-zinc-200 transition text-xs">Batal</button>
+                    <button type="submit" disabled={ownerLoading} className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-semibold hover:bg-zinc-850 transition text-xs flex items-center justify-center gap-1 shadow-md">
+                      {ownerLoading ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Icon name="shield-check" size={14} />}
+                      {ownerLoading ? 'Verifikasi...' : 'Masuk'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       );
     }

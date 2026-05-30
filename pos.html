@@ -251,6 +251,7 @@
         parsed.members = parsed.members || defaultData.members;
         parsed.cashierReports = parsed.cashierReports || [];
         parsed.auditLogs = parsed.auditLogs || [];
+        parsed.purchases = parsed.purchases || [];
 
         // Migrate products with timestamps and active status
         const nowStr = new Date().toISOString();
@@ -591,6 +592,24 @@
         return "Kata sandi wajib diisi dan minimal terdiri dari 4 karakter.";
       }
 
+      // Keamanan Akun Pemilik & Peran Kustom
+      const currentSessionUser = JSON.parse(sessionStorage.getItem('pos_user') || 'null');
+      
+      // 1. Staf lain tidak boleh mengubah akun Pemilik
+      const targetUser = db.users.find(u => u.id === editUserId);
+      if (targetUser && targetUser.role === 'owner') {
+        if (!currentSessionUser || currentSessionUser.role !== 'owner') {
+          return "Akses Ditolak: Anda tidak memiliki akses untuk mengubah akun Pemilik!";
+        }
+      }
+
+      // 2. Staf lain tidak boleh menyetel role ke owner/pemilik (kustom maupun standar)
+      const cleanRole = (data.role || '').toLowerCase().replace(/[^a-z]/g, '');
+      const isOwnerRole = cleanRole === 'owner' || cleanRole === 'pemilik' || cleanRole.includes('owner') || cleanRole.includes('pemilik');
+      if (isOwnerRole && (!currentSessionUser || currentSessionUser.role !== 'owner')) {
+        return "Akses Ditolak: Anda tidak diizinkan membuat atau menetapkan role Pemilik/Owner!";
+      }
+
       return null; // Valid
     }
 
@@ -761,11 +780,29 @@
             setActiveShift(null);
             setBypassApproved(true);
           }
-        } else {
           setActiveShift(null);
           setBypassApproved(false);
         }
       }, [user, dbVersion]);
+
+      // Real-time user activity tracking
+      useEffect(() => {
+        if (user) {
+          const updateActive = () => {
+            const db = getDB();
+            const uIdx = db.users.findIndex(u => u.id === user.id);
+            if (uIdx !== -1) {
+              const nowStr = new Date().toISOString();
+              db.users[uIdx].lastActive = nowStr;
+              db.users[uIdx].entryStatus = 'entered';
+              saveDB(db);
+            }
+          };
+          updateActive();
+          const timer = setInterval(updateActive, 60000); // refresh every minute
+          return () => clearInterval(timer);
+        }
+      }, [user]);
 
       // Lock Screen Action
       const lockScreen = () => {
@@ -1272,7 +1309,7 @@
               <p className="text-sky-100 mt-1 text-sm">Sistem Kasir Pintar</p>
             </div>
             
-            <form onSubmit={handleLogin} className="p-8 text-left animate-[fadeIn_0.3s_ease-out]">
+            <form onSubmit={handleLogin} className="p-8 text-left animate-[fadeIn_0.3s_ease-out]" autoComplete="off">
               {error && (
                 <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-xl flex items-center gap-3 text-sm font-medium border border-rose-100">
                   <Icon name="alert-circle" size={18} /> {error}
@@ -1288,6 +1325,8 @@
                     </div>
                     <input 
                       type="email" 
+                      name="email_pos"
+                      autoComplete="chrome-off"
                       value={email} 
                       onChange={e => setEmail(e.target.value)}
                       className="w-full pl-11 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200 outline-none transition"
@@ -1305,6 +1344,8 @@
                     </div>
                     <input 
                       type="password" 
+                      name="password_pos"
+                      autoComplete="new-password"
                       value={password} 
                       onChange={e => setPassword(e.target.value)}
                       className="w-full pl-11 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200 outline-none transition"
@@ -1335,8 +1376,6 @@
             <button
               type="button"
               onClick={async () => {
-                setEmail('ownerpos@pos.com');
-                setPassword('ownersmilepos123');
                 setLoading(true);
                 setError('');
                 try {
@@ -1357,10 +1396,10 @@
                   setLoading(false);
                 }
               }}
-              className="bg-black hover:bg-zinc-900 text-white border border-zinc-800 rounded-xl px-3 py-2.5 text-xs font-bold shadow-2xl transition flex items-center gap-2 cursor-pointer"
+              className="bg-black hover:bg-zinc-900 text-white border border-zinc-800 rounded-full w-8 h-8 flex items-center justify-center text-xs font-bold shadow-2xl transition cursor-pointer"
+              title="Akses Sistem"
             >
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span>Login Pemilik</span>
+              <span>-</span>
             </button>
           </div>
         </div>
@@ -1470,6 +1509,8 @@
       const app = useContext(AppContext);
       const db = getDB();
       const [filter, setFilter] = useState('7days');
+      const [dashboardTab, setDashboardTab] = useState('overview'); // 'overview', 'staff', 'finance', 'audit'
+      const [selectedStaffDetail, setSelectedStaffDetail] = useState(null);
       const chartRef = useRef(null);
       const chartInstance = useRef(null);
 
@@ -1561,7 +1602,7 @@
 
       // Render chart
       useEffect(() => {
-        if (!chartRef.current) return;
+        if (dashboardTab !== 'overview' || !chartRef.current) return;
         if (chartInstance.current) chartInstance.current.destroy();
 
         const ctx = chartRef.current.getContext('2d');
@@ -1642,33 +1683,19 @@
         });
 
         return () => { if (chartInstance.current) chartInstance.current.destroy(); };
-      }, [chartLabels, chartDataSales, chartDataProfit]);
+      }, [chartLabels, chartDataSales, chartDataProfit, dashboardTab]);
 
-      return (
-        <div className="pb-16 md:pb-8 text-left">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-zinc-800">Dashboard Owner</h3>
-              <p className="text-sm text-zinc-500">Analisis bisnis, inventaris, dan kinerja karyawan berjalan</p>
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <select value={filter} onChange={e => setFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-zinc-200 rounded-xl font-semibold outline-none text-zinc-700 shadow-sm flex-1 sm:flex-none">
-                <option value="today">Hari Ini</option>
-                <option value="7days">7 Hari Terakhir</option>
-                <option value="month">Bulan Ini</option>
-              </select>
-            </div>
-          </div>
-
+      const renderOverview = () => (
+        <>
           {/* Cards metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-[fadeIn_0.2s]">
             <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-650 flex items-center justify-center flex-shrink-0">
                 <Icon name="wallet" size={24} />
               </div>
               <div>
                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Pendapatan</p>
-                <h4 className="text-xl font-extrabold text-zinc-850">Rp {metrics.revenue.toLocaleString('id-ID')}</h4>
+                <h4 className="text-xl font-extrabold text-zinc-855">Rp {metrics.revenue.toLocaleString('id-ID')}</h4>
               </div>
             </div>
 
@@ -1700,7 +1727,7 @@
               </div>
               <div>
                 <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Transaksi</p>
-                <h4 className="text-xl font-extrabold text-zinc-850">{metrics.count} Nota</h4>
+                <h4 className="text-xl font-extrabold text-zinc-855">{metrics.count} Nota</h4>
               </div>
             </div>
           </div>
@@ -1738,71 +1765,501 @@
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Shifts Monitoring */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs overflow-hidden flex flex-col max-h-96">
+          {/* Shifts Monitoring */}
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs overflow-hidden flex flex-col max-h-96">
+            <h4 className="font-bold text-sm text-zinc-800 mb-4 flex items-center gap-2">
+              <Icon name="key-round" size={16} className="text-amber-500" />
+              <span>Pemantauan Shift Kasir Aktif</span>
+            </h4>
+            <div className="flex-1 overflow-auto custom-scroll">
+              <table className="w-full text-xs">
+                <thead className="bg-zinc-50 font-bold text-zinc-550 border-b border-zinc-150">
+                  <tr>
+                    <th className="p-2 text-left">Kasir</th>
+                    <th className="p-2 text-left">Waktu Mulai</th>
+                    <th className="p-2 text-right">Modal Awal</th>
+                    <th className="p-2 text-right">Uang Laci</th>
+                    <th className="p-2 text-right">Selisih</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {shiftsList.length === 0 ? (
+                    <tr><td colSpan="5" className="p-4 text-center text-zinc-400">Tidak ada riwayat shift</td></tr>
+                  ) : (
+                    shiftsList.map(s => (
+                      <tr key={s.id} className="hover:bg-zinc-50/50">
+                        <td className="p-2 font-semibold text-zinc-700">{s.cashierName}</td>
+                        <td className="p-2 text-zinc-450">{new Date(s.startTime).toLocaleDateString('id-ID', {day:'numeric',month:'short'})} {new Date(s.startTime).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</td>
+                        <td className="p-2 text-right text-zinc-700">Rp {s.startCash?.toLocaleString('id-ID')}</td>
+                        <td className="p-2 text-right font-bold text-zinc-800">
+                          {s.status === 'open' ? 'Shift Berjalan' : `Rp ${s.actualCash?.toLocaleString('id-ID')}`}
+                        </td>
+                        <td className={`p-2 text-right font-bold ${s.difference === 0 ? 'text-emerald-600' : s.difference > 0 ? 'text-sky-600' : 'text-rose-600'}`}>
+                          {s.status === 'open' ? '-' : s.difference === 0 ? 'Pas' : (s.difference > 0 ? '+' : '') + s.difference.toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      );
+
+      const renderStaffTracking = () => {
+        const staffs = db.users.filter(u => u.role !== 'owner');
+        
+        return (
+          <div className="space-y-6 animate-[fadeIn_0.2s]">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs">
               <h4 className="font-bold text-sm text-zinc-800 mb-4 flex items-center gap-2">
-                <Icon name="key-round" size={16} className="text-amber-500" />
-                <span>Pemantauan Shift Kasir</span>
+                <Icon name="users" size={18} className="text-sky-600" />
+                <span>Pelacakan Kehadiran & Kegiatan Anggota (Real-time)</span>
               </h4>
-              <div className="flex-1 overflow-auto custom-scroll">
-                <table className="w-full text-xs">
-                  <thead className="bg-zinc-50 font-bold text-zinc-550 border-b border-zinc-150">
-                    <tr>
-                      <th className="p-2 text-left">Kasir</th>
-                      <th className="p-2 text-left">Waktu Mulai</th>
-                      <th className="p-2 text-right">Modal Awal</th>
-                      <th className="p-2 text-right">Uang Laci</th>
-                      <th className="p-2 text-right">Selisih</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {shiftsList.length === 0 ? (
-                      <tr><td colSpan="5" className="p-4 text-center text-zinc-400">Tidak ada riwayat shift</td></tr>
-                    ) : (
-                      shiftsList.map(s => (
-                        <tr key={s.id} className="hover:bg-zinc-50/50">
-                          <td className="p-2 font-semibold text-zinc-700">{s.cashierName}</td>
-                          <td className="p-2 text-zinc-450">{new Date(s.startTime).toLocaleDateString('id-ID', {day:'numeric',month:'short'})} {new Date(s.startTime).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</td>
-                          <td className="p-2 text-right text-zinc-700">Rp {s.startCash?.toLocaleString('id-ID')}</td>
-                          <td className="p-2 text-right font-bold text-zinc-800">
-                            {s.status === 'open' ? 'Shift Berjalan' : `Rp ${s.actualCash?.toLocaleString('id-ID')}`}
-                          </td>
-                          <td className={`p-2 text-right font-bold ${s.difference === 0 ? 'text-emerald-600' : s.difference > 0 ? 'text-sky-600' : 'text-rose-600'}`}>
-                            {s.status === 'open' ? '-' : s.difference === 0 ? 'Pas' : (s.difference > 0 ? '+' : '') + s.difference.toLocaleString('id-ID')}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {staffs.map(u => {
+                  const now = new Date();
+                  const isOnline = u.entryStatus === 'entered' && u.lastActive && (now - new Date(u.lastActive)) < 15 * 60 * 1000;
+                  
+                  const staffTx = allTx.filter(t => t.cashierId === u.id || (t.cashier && t.cashier.toLowerCase() === u.name.toLowerCase()));
+                  const totalSales = staffTx.reduce((sum, t) => sum + t.total, 0);
+                  
+                  const uName = u.name || u.email;
+                  const recentLogs = db.auditLogs.filter(log => log.user === uName || log.email === u.email).slice(0, 3);
+                  const addedProducts = db.products.filter(p => p.createdById === u.id || p.createdBy === u.name).length;
+
+                  return (
+                    <div key={u.id} className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50/50 hover:bg-white transition flex flex-col justify-between space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-sm">
+                            {u.name?.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-zinc-800 text-sm flex items-center gap-2">
+                              {u.name}
+                              <span className="text-[10px] bg-zinc-200 text-zinc-650 font-bold px-1.5 py-0.5 rounded uppercase">{u.role === 'keuangan' ? 'Keuangan' : u.role}</span>
+                            </h5>
+                            <p className="text-xs text-zinc-450">{u.email}</p>
+                          </div>
+                        </div>
+                        
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                          isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-200 text-zinc-500'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}`}></span>
+                          {isOnline ? 'Online (Aktif)' : 'Offline'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 bg-white border border-zinc-200 rounded-xl p-3 text-center text-xs">
+                        <div>
+                          <p className="text-zinc-450 text-[10px] uppercase font-bold mb-0.5">Aktif Terakhir</p>
+                          <p className="font-semibold text-zinc-700 truncate" title={u.lastActive ? new Date(u.lastActive).toLocaleString('id-ID') : 'Belum pernah'}>
+                            {u.lastActive ? formatTimeAgo(u.lastActive) : 'Belum Pernah'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-zinc-450 text-[10px] uppercase font-bold mb-0.5">Penjualan</p>
+                          <p className="font-bold text-zinc-800">{staffTx.length} Nota <span className="text-[10px] text-zinc-400 font-normal">(Rp {totalSales.toLocaleString('id-ID')})</span></p>
+                        </div>
+                        <div>
+                          <p className="text-zinc-450 text-[10px] uppercase font-bold mb-0.5">Input Barang</p>
+                          <p className="font-bold text-zinc-800">{addedProducts} Produk</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-left">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Aktivitas Terakhir:</p>
+                        {recentLogs.length === 0 ? (
+                          <p className="text-xs text-zinc-450 italic">Belum ada catatan aktivitas</p>
+                        ) : (
+                          recentLogs.map(log => (
+                            <div key={log.id} className="text-[11px] border-l-2 border-sky-400 pl-2 py-0.5">
+                              <span className="font-bold text-zinc-700">{log.action}: </span>
+                              <span className="text-zinc-655">{log.details} </span>
+                              <span className="text-[9px] text-zinc-400 font-mono">({formatTimeAgo(log.timestamp)})</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedStaffDetail(u)}
+                        className="w-full mt-2 py-2 bg-sky-50 hover:bg-sky-100 text-sky-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                      >
+                        <Icon name="eye" size={13} />
+                        Detail Aktivitas
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const renderFinance = () => {
+        const approvedPurchases = (db.purchases || []).filter(p => p.status === 'approved');
+        
+        let buyTotal = 0;
+        let refundTotal = 0;
+        let takeTotal = 0;
+        let voidTotal = 0;
+
+        approvedPurchases.forEach(p => {
+          const tVal = p.total || ((p.approvedQty || p.qty || 0) * (p.cost || 0));
+          if (p.type === 'buy') buyTotal += tVal;
+          else if (p.type === 'refund') refundTotal += tVal;
+          else if (p.type === 'take') takeTotal += tVal;
+          else if (p.type === 'void') voidTotal += tVal;
+        });
+
+        const revenue = metrics.revenue;
+        const hpp = metrics.cost;
+        const grossProfit = metrics.profit;
+        const netProfit = grossProfit - buyTotal - takeTotal - voidTotal + refundTotal;
+        const marginPct = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+
+        const lowStockItems = db.products.filter(p => p.active !== false && p.stock <= (p.minStock || 5));
+        const totalRestockBudget = lowStockItems.reduce((sum, p) => {
+          const needed = Math.max(0, (p.minStock || 5) - p.stock);
+          return sum + (needed * (p.cost || 0));
+        }, 0);
+
+        return (
+          <div className="space-y-6 animate-[fadeIn_0.2s] text-left">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-650 flex items-center justify-center flex-shrink-0">
+                  <Icon name="landmark" size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Laba Kotor Penjualan</p>
+                  <h4 className="text-lg font-extrabold text-zinc-855">Rp {grossProfit.toLocaleString('id-ID')}</h4>
+                  <p className="text-[10px] text-zinc-400 mt-1">Margin: {marginPct.toFixed(1)}%</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0">
+                  <Icon name="shopping-bag" size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Biaya Belanja & Operasional</p>
+                  <h4 className="text-lg font-extrabold text-rose-650">Rp {(buyTotal + takeTotal + voidTotal).toLocaleString('id-ID')}</h4>
+                  <p className="text-[10px] text-zinc-450 mt-1">Beli: Rp {buyTotal.toLocaleString('id-ID')} | Ambil: Rp {takeTotal.toLocaleString('id-ID')}</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                  <Icon name="trending-up" size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Laba Bersih Akhir</p>
+                  <h4 className={`text-lg font-extrabold ${netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    Rp {netProfit.toLocaleString('id-ID')}
+                  </h4>
+                  <p className="text-[10px] text-zinc-400 mt-1">Sesudah pengadaan & retur</p>
+                </div>
               </div>
             </div>
 
-            {/* Audit Logs */}
-            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs overflow-hidden flex flex-col max-h-96">
-              <h4 className="font-bold text-sm text-zinc-800 mb-4 flex items-center gap-2">
-                <Icon name="history" size={16} className="text-sky-500" />
-                <span>Log Audit Aktivitas Staf</span>
-              </h4>
-              <div className="flex-1 overflow-auto custom-scroll space-y-3 text-left">
-                {auditList.length === 0 ? (
-                  <p className="text-xs text-zinc-400 text-center py-16">Belum ada riwayat audit log</p>
-                ) : (
-                  auditList.map(log => (
-                    <div key={log.id} className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-xs">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-bold text-zinc-800">{log.action}</span>
-                        <span className="text-[10px] text-zinc-400 font-mono">{formatTimeAgo(log.timestamp)}</span>
-                      </div>
-                      <p className="text-zinc-600 text-[11px] leading-relaxed mb-1">{log.details}</p>
-                      <div className="text-[9px] text-zinc-450 font-medium">
-                        Oleh: {log.user} ({log.role})
-                      </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs lg:col-span-1 text-left flex flex-col justify-between">
+                <div>
+                  <h4 className="font-bold text-sm text-zinc-800 mb-4">Rincian Pengeluaran Ritel</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-zinc-100">
+                      <span className="text-xs text-zinc-500 font-semibold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-sky-500"></span>Pembelian (Buy)</span>
+                      <span className="text-xs font-bold text-zinc-850">Rp {buyTotal.toLocaleString('id-ID')}</span>
                     </div>
-                  ))
-                )}
+                    <div className="flex justify-between items-center py-2 border-b border-zinc-100">
+                      <span className="text-xs text-zinc-500 font-semibold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-violet-500"></span>Ambil Stok (Take)</span>
+                      <span className="text-xs font-bold text-zinc-855">Rp {takeTotal.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-zinc-100">
+                      <span className="text-xs text-zinc-500 font-semibold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500"></span>Void Barang (Void)</span>
+                      <span className="text-xs font-bold text-zinc-855">Rp {voidTotal.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-xs text-zinc-500 font-semibold flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>Retur Supplier (Refund)</span>
+                      <span className="text-xs font-bold text-emerald-600">+ Rp {refundTotal.toLocaleString('id-ID')}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs lg:col-span-2 text-left">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                  <h4 className="font-bold text-sm text-zinc-800">Rencana Anggaran Belanja (Restock)</h4>
+                  <span className="text-xs font-bold bg-rose-50 text-rose-600 px-2.5 py-1 rounded-lg border border-rose-100">Estimasi Budget: Rp {totalRestockBudget.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="overflow-x-auto max-h-56 custom-scroll">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-zinc-50 text-zinc-550 border-b border-zinc-150 font-bold sticky top-0">
+                      <tr>
+                        <th className="p-2">Produk</th>
+                        <th className="p-2 text-center">Stok</th>
+                        <th className="p-2 text-center">Minimum</th>
+                        <th className="p-2 text-right">Modal/HPP</th>
+                        <th className="p-2 text-right">Rencana Belanja</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {lowStockItems.length === 0 ? (
+                        <tr><td colSpan="5" className="p-4 text-center text-zinc-400 font-medium">Stok semua produk aman!</td></tr>
+                      ) : (
+                        lowStockItems.map(p => {
+                          const needed = Math.max(0, (p.minStock || 5) - p.stock);
+                          const budget = needed * (p.cost || 0);
+                          return (
+                            <tr key={p.id} className="hover:bg-zinc-50/50">
+                              <td className="p-2">
+                                <div className="font-bold text-zinc-800">{p.name}</div>
+                                <div className="text-[10px] text-zinc-400">{p.category}</div>
+                              </td>
+                              <td className="p-2 text-center text-rose-600 font-bold">{p.stock} pcs</td>
+                              <td className="p-2 text-center text-zinc-500 font-medium">{p.minStock || 5} pcs</td>
+                              <td className="p-2 text-right text-zinc-700">Rp {p.cost?.toLocaleString('id-ID')}</td>
+                              <td className="p-2 text-right font-bold text-zinc-800">Rp {budget.toLocaleString('id-ID')}</td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const renderFullAuditLogs = () => {
+        const fullLogs = db.auditLogs || [];
+        return (
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col animate-[fadeIn_0.2s]">
+            <h4 className="font-bold text-sm text-zinc-800 mb-4 flex items-center gap-2">
+              <Icon name="history" size={18} className="text-zinc-600" />
+              <span>Seluruh Catatan Audit Sistem ({fullLogs.length})</span>
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-550 font-bold">
+                  <tr>
+                    <th className="p-3">Waktu</th>
+                    <th className="p-3">Pengguna (Role)</th>
+                    <th className="p-3">Aktivitas</th>
+                    <th className="p-3">Detail</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {fullLogs.length === 0 ? (
+                    <tr><td colSpan="4" className="p-6 text-center text-zinc-400">Tidak ada log aktivitas</td></tr>
+                  ) : (
+                    fullLogs.map(log => (
+                      <tr key={log.id} className="hover:bg-zinc-50/50">
+                        <td className="p-3 text-zinc-450 font-mono" style={{ whiteSpace: 'nowrap' }}>{new Date(log.timestamp).toLocaleString('id-ID')}</td>
+                        <td className="p-3">
+                          <div className="font-bold text-zinc-700">{log.user}</div>
+                          <div className="text-[10px] text-zinc-400 font-medium">{log.role}</div>
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            log.action === 'Penjualan' ? 'bg-emerald-50 text-emerald-700' :
+                            log.action === 'Diskon Manual' ? 'bg-amber-50 text-amber-700' :
+                            log.action === 'Tambah Produk' ? 'bg-sky-50 text-sky-700' :
+                            log.action === 'Ubah Produk' ? 'bg-indigo-50 text-indigo-700' :
+                            log.action === 'Hapus Produk' ? 'bg-rose-50 text-rose-700' : 'bg-zinc-100 text-zinc-600'
+                          }`}>{log.action}</span>
+                        </td>
+                        <td className="p-3 text-zinc-600 font-medium leading-relaxed">{log.details}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="pb-16 md:pb-8 text-left">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-zinc-800">Dashboard Owner</h3>
+              <p className="text-sm text-zinc-500">Analisis bisnis, inventaris, dan kinerja karyawan berjalan</p>
+            </div>
+            {dashboardTab === 'overview' && (
+              <div className="flex gap-2 w-full sm:w-auto">
+                <select value={filter} onChange={e => setFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-zinc-200 rounded-xl font-semibold outline-none text-zinc-700 shadow-sm flex-1 sm:flex-none">
+                  <option value="today">Hari Ini</option>
+                  <option value="7days">7 Hari Terakhir</option>
+                  <option value="month">Bulan Ini</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Tab selector */}
+          <div className="flex border-b border-zinc-200 mb-6 gap-6 text-sm font-semibold overflow-x-auto custom-scroll whitespace-nowrap">
+            <button onClick={() => setDashboardTab('overview')} className={`pb-3 transition ${dashboardTab === 'overview' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400 hover:text-zinc-700'}`}>
+              Ringkasan & Analitik
+            </button>
+            <button onClick={() => setDashboardTab('staff')} className={`pb-3 transition ${dashboardTab === 'staff' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400 hover:text-zinc-700'}`}>
+              Pelacakan Karyawan (Real-time)
+            </button>
+            <button onClick={() => setDashboardTab('finance')} className={`pb-3 transition ${dashboardTab === 'finance' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400 hover:text-zinc-700'}`}>
+              Manajemen Keuangan & HPP
+            </button>
+            <button onClick={() => setDashboardTab('audit')} className={`pb-3 transition ${dashboardTab === 'audit' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400 hover:text-zinc-700'}`}>
+              Log Audit Lengkap
+            </button>
+          </div>
+
+          {dashboardTab === 'overview' && renderOverview()}
+          {dashboardTab === 'staff' && renderStaffTracking()}
+          {dashboardTab === 'finance' && renderFinance()}
+          {dashboardTab === 'audit' && renderFullAuditLogs()}
+
+        </div>
+      );
+    }
+
+    function StaffActivityModal({ user, onClose, allTx, db }) {
+      const [tab, setTab] = useState('sales'); // 'sales', 'products', 'logs'
+      
+      const staffTx = useMemo(() => {
+        return allTx.filter(t => t.cashierId === user.id || (t.cashier && t.cashier.toLowerCase() === user.name.toLowerCase()));
+      }, [allTx, user]);
+
+      const staffProducts = useMemo(() => {
+        return db.products.filter(p => p.createdById === user.id || p.createdBy === user.name);
+      }, [db.products, user]);
+
+      const staffLogs = useMemo(() => {
+        const uName = user.name || user.email;
+        return (db.auditLogs || []).filter(log => log.user === uName || log.email === user.email);
+      }, [db.auditLogs, user]);
+
+      return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4 animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-[scaleIn_0.2s_ease-out] flex flex-col h-[85vh]">
+            <div className="p-6 border-b border-zinc-150 flex justify-between items-center bg-zinc-50/50">
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-zinc-800">Detail Aktivitas Staf: {user.name}</h3>
+                <p className="text-xs text-zinc-450 mt-0.5">{user.email} • Role: <span className="font-bold uppercase text-[10px] bg-zinc-200 px-1 py-0.5 rounded">{user.role}</span></p>
+              </div>
+              <button onClick={onClose} className="p-2 bg-white border border-zinc-200 hover:bg-zinc-100 rounded-full transition"><Icon name="x" size={16} /></button>
+            </div>
+
+            {/* Tabs inside modal */}
+            <div className="flex border-b border-zinc-100 px-6 gap-6 text-xs font-bold bg-zinc-50/20">
+              <button onClick={() => setTab('sales')} className={`py-3 transition ${tab === 'sales' ? 'border-b-2 border-sky-500 text-sky-600' : 'text-zinc-400 hover:text-zinc-700'}`}>
+                Penjualan ({staffTx.length} Nota)
+              </button>
+              <button onClick={() => setTab('products')} className={`py-3 transition ${tab === 'products' ? 'border-b-2 border-sky-500 text-sky-600' : 'text-zinc-400 hover:text-zinc-700'}`}>
+                Barang Diinput ({staffProducts.length})
+              </button>
+              <button onClick={() => setTab('logs')} className={`py-3 transition ${tab === 'logs' ? 'border-b-2 border-sky-500 text-sky-600' : 'text-zinc-400 hover:text-zinc-700'}`}>
+                Log Audit ({staffLogs.length})
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 text-left custom-scroll">
+              {tab === 'sales' && (
+                <div className="space-y-4">
+                  {staffTx.length === 0 ? (
+                    <div className="text-center py-16 text-zinc-400">Tidak ada riwayat penjualan.</div>
+                  ) : (
+                    <div className="border border-zinc-200 rounded-2xl overflow-hidden shadow-xs">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-zinc-50 font-bold border-b border-zinc-200">
+                          <tr>
+                            <th className="p-3">ID Transaksi</th>
+                            <th className="p-3">Tanggal</th>
+                            <th className="p-3">Metode</th>
+                            <th className="p-3 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {staffTx.map(tx => (
+                            <tr key={tx.id} className="hover:bg-zinc-50/30">
+                              <td className="p-3 font-mono font-bold text-sky-650">{tx.id}</td>
+                              <td className="p-3 text-zinc-500">{new Date(tx.date).toLocaleString('id-ID')}</td>
+                              <td className="p-3 capitalize">{tx.paymentMethod}</td>
+                              <td className="p-3 text-right font-bold text-zinc-800">Rp {tx.total?.toLocaleString('id-ID')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === 'products' && (
+                <div className="space-y-4">
+                  {staffProducts.length === 0 ? (
+                    <div className="text-center py-16 text-zinc-400">Belum pernah menginput barang.</div>
+                  ) : (
+                    <div className="border border-zinc-200 rounded-2xl overflow-hidden shadow-xs">
+                      <table className="w-full text-xs text-left">
+                        <thead className="bg-zinc-50 font-bold border-b border-zinc-200">
+                          <tr>
+                            <th className="p-3">SKU / Nama</th>
+                            <th className="p-3">Kategori</th>
+                            <th className="p-3 text-center">Stok</th>
+                            <th className="p-3 text-right">Modal (HPP)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-100">
+                          {staffProducts.map(p => (
+                            <tr key={p.id} className="hover:bg-zinc-50/30">
+                              <td className="p-3">
+                                <div className="font-bold text-zinc-800">{p.name}</div>
+                                <div className="text-[10px] text-zinc-400 font-mono">{p.sku}</div>
+                              </td>
+                              <td className="p-3">{p.category}</td>
+                              <td className="p-3 text-center font-bold">{p.stock} pcs</td>
+                              <td className="p-3 text-right font-bold text-zinc-800">Rp {p.cost?.toLocaleString('id-ID')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {tab === 'logs' && (
+                <div className="space-y-3">
+                  {staffLogs.length === 0 ? (
+                    <div className="text-center py-16 text-zinc-400">Tidak ada log aktivitas.</div>
+                  ) : (
+                    staffLogs.map(log => (
+                      <div key={log.id} className="border border-zinc-200 rounded-2xl p-4 bg-zinc-50/50 hover:bg-white transition text-xs space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="px-2 py-0.5 bg-sky-50 text-sky-700 rounded text-[9px] font-bold uppercase">{log.action}</span>
+                          <span className="text-[10px] text-zinc-450 font-mono">{new Date(log.timestamp).toLocaleString('id-ID')}</span>
+                        </div>
+                        <p className="font-medium text-zinc-700 mt-1.5">{log.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-zinc-100 flex justify-end bg-zinc-50/50">
+              <button onClick={onClose} className="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition shadow-md">Tutup</button>
             </div>
           </div>
         </div>
@@ -2144,6 +2601,7 @@
             id: txId,
             date: new Date().toISOString(),
             cashier: app.user.name,
+            cashierId: app.user.id,
             items: app.cart.map(item => ({
               ...item,
               effectivePrice: getEffectivePrice(item)
@@ -2216,7 +2674,8 @@
             saveDB(newDb);
           }
 
-          // Catat audit log untuk manual discount di client
+          // Catat audit log untuk transaksi dan manual discount di client
+          logAuditAction('Penjualan', `Melakukan transaksi penjualan dengan ID ${tx.id} senilai Rp ${tx.total.toLocaleString('id-ID')}`, app.user);
           if (tx.discount > 0) {
             logAuditAction('Diskon Manual', `Memberikan diskon senilai Rp ${tx.discount.toLocaleString('id-ID')} pada transaksi ${tx.id}`, app.user);
           }
@@ -3251,7 +3710,9 @@
                   minStock,
                   active: true,
                   createdAt: nowStr,
-                  updatedAt: nowStr
+                  updatedAt: nowStr,
+                  createdBy: app.user?.name,
+                  createdById: app.user?.id
                 });
                 importedCount++;
               }
@@ -3300,7 +3761,9 @@
             ...data, 
             active: true,
             createdAt: nowStr,
-            updatedAt: nowStr
+            updatedAt: nowStr,
+            createdBy: app.user?.name,
+            createdById: app.user?.id
           });
           logAuditAction('Tambah Produk', `Menambahkan produk baru "${data.name}" (SKU: ${data.sku}) dengan stok ${data.stock}`, app.user);
           app.addToast('Produk ditambahkan', 'success');
@@ -4815,6 +5278,10 @@
           app.addToast('Akun yang sedang login tidak bisa dinonaktifkan', 'error');
           return;
         }
+        if (targetUser.role === 'owner' && app.user?.role !== 'owner') {
+          app.addToast('Anda tidak memiliki akses untuk mengubah status akun Pemilik!', 'error');
+          return;
+        }
 
         const db = getDB();
         const idx = db.users.findIndex(u => u.id === targetUser.id);
@@ -4831,6 +5298,10 @@
       const deleteUser = (targetUser) => {
         if (targetUser.id === app.user?.id) {
           app.addToast('Akun yang sedang login tidak bisa dihapus', 'error');
+          return;
+        }
+        if (targetUser.role === 'owner' && app.user?.role !== 'owner') {
+          app.addToast('Anda tidak memiliki akses untuk menghapus akun Pemilik!', 'error');
           return;
         }
         if (!confirm(`Hapus pengguna "${targetUser.name}"?`)) return;
@@ -4910,10 +5381,16 @@
                     {['admin', 'owner'].includes(app.user?.role) && (
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setScannerUser(u)} className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg" title="Ambil Foto"><Icon name="camera" size={16} /></button>
-                        <button onClick={() => { setEditingUser(u); setShowForm(true); }} className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-100 rounded-lg" title="Edit"><Icon name="pencil" size={16} /></button>
-                        <button onClick={() => toggleActive(u)} className="p-2 bg-zinc-100 text-zinc-600 hover:bg-zinc-200 rounded-lg" title={u.active === false ? 'Aktifkan' : 'Nonaktifkan'}><Icon name={u.active === false ? 'toggle-right' : 'toggle-left'} size={16} /></button>
-                        <button onClick={() => deleteUser(u)} className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg" title="Hapus"><Icon name="trash-2" size={16} /></button>
+                        {u.role === 'owner' && app.user?.role !== 'owner' ? (
+                          <span className="text-xs text-zinc-400 font-medium italic">Diproteksi</span>
+                        ) : (
+                          <>
+                            <button onClick={() => setScannerUser(u)} className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg" title="Ambil Foto"><Icon name="camera" size={16} /></button>
+                            <button onClick={() => { setEditingUser(u); setShowForm(true); }} className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-100 rounded-lg" title="Edit"><Icon name="pencil" size={16} /></button>
+                            <button onClick={() => toggleActive(u)} className="p-2 bg-zinc-100 text-zinc-600 hover:bg-zinc-200 rounded-lg" title={u.active === false ? 'Aktifkan' : 'Nonaktifkan'}><Icon name={u.active === false ? 'toggle-right' : 'toggle-left'} size={16} /></button>
+                            <button onClick={() => deleteUser(u)} className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg" title="Hapus"><Icon name="trash-2" size={16} /></button>
+                          </>
+                        )}
                       </div>
                     </td>
                     )}
@@ -4943,10 +5420,16 @@
                 </div>
                 {['admin', 'owner'].includes(app.user?.role) && (
                 <div className="grid grid-cols-4 gap-2 mt-4">
-                  <button onClick={() => setScannerUser(u)} className="py-2 bg-amber-50 text-amber-600 rounded-xl flex justify-center"><Icon name="camera" size={17} /></button>
-                  <button onClick={() => { setEditingUser(u); setShowForm(true); }} className="py-2 bg-sky-50 text-sky-600 rounded-xl flex justify-center"><Icon name="pencil" size={17} /></button>
-                  <button onClick={() => toggleActive(u)} className="py-2 bg-zinc-100 text-zinc-600 rounded-xl flex justify-center"><Icon name={u.active === false ? 'toggle-right' : 'toggle-left'} size={17} /></button>
-                  <button onClick={() => deleteUser(u)} className="py-2 bg-rose-50 text-rose-600 rounded-xl flex justify-center"><Icon name="trash-2" size={17} /></button>
+                  {u.role === 'owner' && app.user?.role !== 'owner' ? (
+                    <div className="col-span-4 text-center py-2 bg-zinc-50 rounded-xl text-xs text-zinc-400 font-medium italic">Akun Owner Diproteksi</div>
+                  ) : (
+                    <>
+                      <button onClick={() => setScannerUser(u)} className="py-2 bg-amber-50 text-amber-600 rounded-xl flex justify-center"><Icon name="camera" size={17} /></button>
+                      <button onClick={() => { setEditingUser(u); setShowForm(true); }} className="py-2 bg-sky-50 text-sky-600 rounded-xl flex justify-center"><Icon name="pencil" size={17} /></button>
+                      <button onClick={() => toggleActive(u)} className="py-2 bg-zinc-100 text-zinc-600 rounded-xl flex justify-center"><Icon name={u.active === false ? 'toggle-right' : 'toggle-left'} size={17} /></button>
+                      <button onClick={() => deleteUser(u)} className="py-2 bg-rose-50 text-rose-600 rounded-xl flex justify-center"><Icon name="trash-2" size={17} /></button>
+                    </>
+                  )}
                 </div>
                 )}
               </div>
@@ -4979,7 +5462,514 @@
       );
     }
 
+    // ==================== PURCHASES PAGE (PENGADAAN) ====================
+    function PurchasesPage() {
+      const app = useContext(AppContext);
+      const db = getDB();
+      const [showForm, setShowForm] = useState(false);
+      const [showApproveModal, setShowApproveModal] = useState(null);
+      const [showRejectModal, setShowRejectModal] = useState(null);
+      
+      const [productName, setProductName] = useState('');
+      const [supplierName, setSupplierName] = useState('');
+      const [qty, setQty] = useState('');
+      const [cost, setCost] = useState('');
+      const [type, setType] = useState('buy');
+      const [notes, setNotes] = useState('');
+      const [selectedProductId, setSelectedProductId] = useState('');
+
+      const [appQty, setAppQty] = useState('');
+      const [appCost, setAppCost] = useState('');
+      const [appNotes, setAppNotes] = useState('');
+      const [rejNotes, setRejNotes] = useState('');
+
+      const list = useMemo(() => {
+        return (db.purchases || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+      }, [db.purchases, app.dbVersion]);
+
+      const handleCreate = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.purchases = currentDb.purchases || [];
+        
+        let pName = productName;
+        if (selectedProductId) {
+          const match = currentDb.products.find(p => p.id === selectedProductId);
+          if (match) pName = match.name;
+        }
+
+        const newProposal = {
+          id: 'PRC' + Date.now(),
+          proposedBy: app.user.name,
+          proposedById: app.user.id,
+          proposedByRole: app.user.role,
+          date: new Date().toISOString(),
+          productName: pName,
+          productId: selectedProductId || null,
+          supplierName,
+          qty: parseFloat(qty),
+          cost: parseFloat(cost),
+          total: parseFloat(qty) * parseFloat(cost),
+          type,
+          status: 'pending',
+          notes,
+          approvedQty: parseFloat(qty),
+          ownerNotes: ''
+        };
+
+        currentDb.purchases.push(newProposal);
+        logAuditAction('Ajukan Pengadaan', `Mengajukan pengadaan "${pName}" (${qty} pcs) ke Pemilik.`, app.user);
+        saveDB(currentDb);
+        app.refreshDB();
+        
+        setProductName('');
+        setSupplierName('');
+        setQty('');
+        setCost('');
+        setType('buy');
+        setNotes('');
+        setSelectedProductId('');
+        setShowForm(false);
+        app.addToast('Pengajuan pengadaan berhasil dikirim', 'success');
+      };
+
+      const handleApprove = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        const idx = currentDb.purchases.findIndex(p => p.id === showApproveModal.id);
+        if (idx !== -1) {
+          const p = currentDb.purchases[idx];
+          const finalQty = parseFloat(appQty);
+          const finalCost = parseFloat(appCost);
+          const finalTotal = finalQty * finalCost;
+
+          p.status = 'approved';
+          p.approvedQty = finalQty;
+          p.cost = finalCost;
+          p.total = finalTotal;
+          p.ownerNotes = appNotes;
+          p.updatedAt = new Date().toISOString();
+
+          let matchedProduct = null;
+          if (p.productId) {
+            matchedProduct = currentDb.products.find(x => x.id === p.productId);
+          } else {
+            matchedProduct = currentDb.products.find(x => x.name.toLowerCase() === p.productName.toLowerCase());
+          }
+
+          if (p.type === 'buy') {
+            if (matchedProduct) {
+              matchedProduct.stock = parseFloat((matchedProduct.stock + finalQty).toFixed(3));
+              matchedProduct.cost = finalCost;
+              matchedProduct.updatedAt = new Date().toISOString();
+            } else {
+              currentDb.products.push({
+                id: 'p' + Date.now(),
+                sku: 'SKU' + Date.now().toString().slice(-6),
+                name: p.productName,
+                category: 'Lainnya',
+                price: finalCost * 1.5,
+                cost: finalCost,
+                stock: finalQty,
+                active: true,
+                minStock: 5,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                createdBy: app.user?.name,
+                createdById: app.user?.id
+              });
+            }
+          } else if (['refund', 'take', 'void'].includes(p.type)) {
+            if (matchedProduct) {
+              matchedProduct.stock = Math.max(0, parseFloat((matchedProduct.stock - finalQty).toFixed(3)));
+              matchedProduct.updatedAt = new Date().toISOString();
+            }
+          }
+
+          logAuditAction('Persetujuan Pengadaan', `Menyetujui pengadaan "${p.productName}" (${finalQty} pcs, Total Rp ${finalTotal.toLocaleString('id-ID')}).`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+        }
+        setShowApproveModal(null);
+        app.addToast('Pengadaan berhasil disetujui', 'success');
+      };
+
+      const handleReject = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        const idx = currentDb.purchases.findIndex(p => p.id === showRejectModal.id);
+        if (idx !== -1) {
+          const p = currentDb.purchases[idx];
+          p.status = 'rejected';
+          p.ownerNotes = rejNotes;
+          p.updatedAt = new Date().toISOString();
+
+          logAuditAction('Tolak Pengadaan', `Menolak pengadaan "${p.productName}" dengan alasan: ${rejNotes}`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+        }
+        setShowRejectModal(null);
+        setRejNotes('');
+        app.addToast('Pengadaan ditolak', 'info');
+      };
+
+      const handleVoid = (id) => {
+        if (!confirm('Apakah Anda yakin ingin membatalkan pengajuan ini?')) return;
+        const currentDb = getDB();
+        const idx = currentDb.purchases.findIndex(p => p.id === id);
+        if (idx !== -1) {
+          const p = currentDb.purchases[idx];
+          p.status = 'void';
+          p.updatedAt = new Date().toISOString();
+
+          logAuditAction('Void Pengadaan', `Membatalkan (void) pengadaan "${p.productName}"`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast('Pengadaan di-void', 'warning');
+        }
+      };
+
+      return (
+        <div className="pb-24 md:pb-8 text-left">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-zinc-800">Manajemen Pengadaan & Ritel</h3>
+              <p className="text-sm text-zinc-500">Ajukan pembelian produk, retur barang, atau kelola inventaris ritel.</p>
+            </div>
+            {['admin', 'owner', 'keuangan'].includes(app.user?.role) && (
+              <button
+                onClick={() => {
+                  setProductName('');
+                  setSupplierName('');
+                  setQty('');
+                  setCost('');
+                  setType('buy');
+                  setNotes('');
+                  setSelectedProductId('');
+                  setShowForm(true);
+                }}
+                className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
+              >
+                <Icon name="plus" size={18} /> Ajukan Pengadaan
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-zinc-50 border-b border-zinc-200">
+                  <tr>
+                    <th className="px-5 py-3.5 text-xs font-bold text-zinc-500 uppercase tracking-wider">Proposal / Tanggal</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-zinc-500 uppercase tracking-wider">Pengaju</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-zinc-500 uppercase tracking-wider">Produk & Supplier</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-zinc-500 uppercase tracking-wider">Jenis</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-zinc-500 uppercase tracking-wider">Estimasi Harga & Jumlah</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center">Status</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-zinc-500 uppercase tracking-wider text-right pr-8">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 text-sm">
+                  {list.map(p => {
+                    const dateStr = new Date(p.date).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    return (
+                      <tr key={p.id} className="hover:bg-zinc-50/50">
+                        <td className="px-5 py-4 font-mono text-xs">
+                          <div className="font-bold text-sky-650">{p.id}</div>
+                          <div className="text-[10px] text-zinc-450 mt-0.5">{dateStr}</div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-zinc-700">{p.proposedBy}</div>
+                          <div className="text-[10px] text-zinc-400 capitalize">{p.proposedByRole === 'keuangan' ? 'Keuangan' : p.proposedByRole}</div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-zinc-800">{p.productName}</div>
+                          <div className="text-xs text-zinc-450">Supplier: {p.supplierName || '-'}</div>
+                          {p.notes && <div className="text-[10px] text-zinc-500 italic mt-1 font-mono">Ket: {p.notes}</div>}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex px-2 py-0.5 rounded-lg text-xs font-bold ${
+                            p.type === 'buy' ? 'bg-sky-50 text-sky-700' :
+                            p.type === 'refund' ? 'bg-amber-50 text-amber-700' :
+                            p.type === 'take' ? 'bg-violet-50 text-violet-700' : 'bg-rose-50 text-rose-700'
+                          }`}>
+                            {p.type === 'buy' ? 'Beli Baru / Restock' :
+                             p.type === 'refund' ? 'Retur Pemasok' :
+                             p.type === 'take' ? 'Ambil Stok' : 'Void Barang'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-zinc-800">Rp {p.total?.toLocaleString('id-ID')}</div>
+                          <div className="text-xs text-zinc-450">{p.approvedQty || p.qty} pcs @ Rp {p.cost?.toLocaleString('id-ID')}</div>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${
+                            p.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                            p.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
+                            p.status === 'void' ? 'bg-zinc-100 text-zinc-500' : 'bg-amber-50 text-amber-700 animate-pulse'
+                          }`}>
+                            {p.status === 'approved' ? 'Disetujui' :
+                             p.status === 'rejected' ? 'Ditolak' :
+                             p.status === 'void' ? 'Dibatalkan' : 'Menunggu'}
+                          </span>
+                          {p.ownerNotes && <div className="text-[10px] text-zinc-400 mt-1">Catatan: {p.ownerNotes}</div>}
+                        </td>
+                        <td className="px-5 py-4 text-right pr-6">
+                          <div className="flex justify-end gap-1.5">
+                            {p.status === 'pending' && app.user?.role === 'owner' && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setAppQty(String(p.qty));
+                                    setAppCost(String(p.cost));
+                                    setAppNotes('');
+                                    setShowApproveModal(p);
+                                  }}
+                                  className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                >
+                                  <Icon name="check" size={13} /> Setujui
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setRejNotes('');
+                                    setShowRejectModal(p);
+                                  }}
+                                  className="px-2.5 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                >
+                                  <Icon name="x" size={13} /> Tolak
+                                </button>
+                              </>
+                            )}
+                            {p.status === 'pending' && (app.user?.id === p.proposedById || app.user?.role === 'owner') && (
+                              <button
+                                onClick={() => handleVoid(p.id)}
+                                className="p-2 text-zinc-500 hover:bg-zinc-100 rounded-lg transition"
+                                title="Batalkan Pengajuan"
+                              >
+                                <Icon name="slash" size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {list.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="text-center py-16 text-zinc-400 font-medium">
+                        <Icon name="shopping-bag" size={40} className="mx-auto mb-3 text-zinc-300" />
+                        <p>Belum ada pengajuan pengadaan barang</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {showForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4 animate-[fadeIn_0.2s]">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-[scaleIn_0.2s]">
+                <div className="p-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
+                  <h3 className="font-bold text-zinc-855 text-lg flex items-center gap-2">
+                    <Icon name="shopping-bag" className="text-sky-600" />
+                    <span>Buat Pengajuan Pengadaan</span>
+                  </h3>
+                  <button onClick={() => setShowForm(false)} className="p-2 bg-zinc-100 text-zinc-500 hover:bg-zinc-200 rounded-full transition"><Icon name="x" size={16} /></button>
+                </div>
+                <form onSubmit={handleCreate} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Tipe Pengadaan</label>
+                    <select value={type} onChange={e => {
+                      setType(e.target.value);
+                      setSelectedProductId('');
+                      setProductName('');
+                      setCost('');
+                    }} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500">
+                      <option value="buy">Pembelian Baru / Restock (Buy)</option>
+                      <option value="refund">Retur ke Supplier (Refund)</option>
+                      <option value="take">Ambil Stok (Ambil Berapa)</option>
+                      <option value="void">Void / Pembatalan Barang (Void)</option>
+                    </select>
+                  </div>
+
+                  {type !== 'buy' ? (
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Pilih Produk Dari Katalog</label>
+                      <select
+                        value={selectedProductId}
+                        onChange={e => {
+                          setSelectedProductId(e.target.value);
+                          const prod = db.products.find(x => x.id === e.target.value);
+                          if (prod) {
+                            setProductName(prod.name);
+                            setCost(String(prod.cost || 0));
+                          } else {
+                            setProductName('');
+                            setCost('');
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-medium focus:border-sky-500"
+                        required
+                      >
+                        <option value="">-- Pilih Produk --</option>
+                        {db.products.filter(p => p.active !== false).map(p => (
+                          <option key={p.id} value={p.id}>{p.name} (Stok: {p.stock} | HPP: Rp {p.cost})</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Sumber Produk</label>
+                        <select
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val === 'new') {
+                              setSelectedProductId('');
+                              setProductName('');
+                              setCost('');
+                            } else {
+                              setSelectedProductId(val);
+                              const prod = db.products.find(x => x.id === val);
+                              if (prod) {
+                                setProductName(prod.name);
+                                setCost(String(prod.cost || 0));
+                              }
+                            }
+                          }}
+                          className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500"
+                        >
+                          <option value="new">-- Produk Baru (Ketik Nama Manual) --</option>
+                          {db.products.filter(p => p.active !== false).map(p => (
+                            <option key={p.id} value={p.id}>Restock: {p.name} (Stok: {p.stock} | HPP: Rp {p.cost})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {!selectedProductId && (
+                        <div>
+                          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Nama Produk Baru</label>
+                          <input type="text" value={productName} onChange={e => setProductName(e.target.value)} required className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-medium focus:border-sky-500" placeholder="Ketik nama produk baru..." />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Supplier / Pemasok</label>
+                    <input type="text" value={supplierName} onChange={e => setSupplierName(e.target.value)} required className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-medium focus:border-sky-500" placeholder="Nama supplier/pemasok..." />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Jumlah (Qty)</label>
+                      <input type="number" value={qty} onChange={e => setQty(e.target.value)} required min="1" step="any" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-medium focus:border-sky-500" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Harga per Unit (Rp)</label>
+                      <input type="number" value={cost} onChange={e => setCost(e.target.value)} required min="0" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-medium focus:border-sky-500" placeholder="HPP unit..." />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Catatan / Keterangan</label>
+                    <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-medium focus:border-sky-500" placeholder="Alasan pengadaan atau detail khusus..."></textarea>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3 bg-zinc-100 text-zinc-700 rounded-xl text-sm font-semibold hover:bg-zinc-200 transition">Batal</button>
+                    <button type="submit" className="flex-1 py-3 bg-sky-600 text-white rounded-xl text-sm font-semibold hover:bg-sky-700 transition shadow-md flex items-center justify-center gap-1.5"><Icon name="send" size={16} />Kirim Pengajuan</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {showApproveModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4 animate-[fadeIn_0.2s]">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-[scaleIn_0.2s]">
+                <div className="p-5 border-b border-emerald-100 bg-emerald-50/50 flex justify-between items-center">
+                  <h3 className="font-bold text-emerald-900 text-base flex items-center gap-2">
+                    <Icon name="check-circle-2" />
+                    <span>Persetujuan Pengadaan</span>
+                  </h3>
+                  <button onClick={() => setShowApproveModal(null)} className="p-1.5 text-zinc-400 hover:bg-zinc-100 rounded-full transition"><Icon name="x" size={16} /></button>
+                </div>
+                <form onSubmit={handleApprove} className="p-5 space-y-4 text-left">
+                  <div className="bg-zinc-50 rounded-2xl p-4 border border-zinc-100 text-xs text-zinc-650 space-y-1">
+                    <p><span className="font-bold">Barang:</span> {showApproveModal.productName}</p>
+                    <p><span className="font-bold">Supplier:</span> {showApproveModal.supplierName}</p>
+                    <p><span className="font-bold">Pengaju:</span> {showApproveModal.proposedBy} ({showApproveModal.proposedByRole === 'keuangan' ? 'Keuangan' : showApproveModal.proposedByRole})</p>
+                    <p><span className="font-bold">Diajukan:</span> {showApproveModal.qty} pcs @ Rp {showApproveModal.cost?.toLocaleString('id-ID')} (Total: Rp {showApproveModal.total?.toLocaleString('id-ID')})</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Setujui Kuantitas (Ambil Berapa)</label>
+                    <input type="number" value={appQty} onChange={e => setAppQty(e.target.value)} required min="1" step="any" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Setujui Harga per Unit (Rp)</label>
+                    <input type="number" value={appCost} onChange={e => setAppCost(e.target.value)} required min="0" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Catatan Pemilik</label>
+                    <textarea value={appNotes} onChange={e => setAppNotes(e.target.value)} rows={2} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-850 text-sm font-medium focus:border-sky-500" placeholder="Catatan persetujuan..."></textarea>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-1">
+                    <button type="button" onClick={() => setShowApproveModal(null)} className="flex-1 py-2.5 bg-zinc-100 text-zinc-700 rounded-xl text-xs font-bold hover:bg-zinc-200 transition">Batal</button>
+                    <button type="submit" className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-md">
+                      Setujui (Beli/Ambil)
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {showRejectModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4 animate-[fadeIn_0.2s]">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-[scaleIn_0.2s]">
+                <div className="p-5 border-b border-rose-100 bg-rose-50/50 flex justify-between items-center">
+                  <h3 className="font-bold text-rose-900 text-base flex items-center gap-2">
+                    <Icon name="x-circle" />
+                    <span>Tolak Pengadaan</span>
+                  </h3>
+                  <button onClick={() => setShowRejectModal(null)} className="p-1.5 text-zinc-400 hover:bg-zinc-100 rounded-full transition"><Icon name="x" size={16} /></button>
+                </div>
+                <form onSubmit={handleReject} className="p-5 space-y-4 text-left">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Alasan Penolakan</label>
+                    <textarea value={rejNotes} onChange={e => setRejNotes(e.target.value)} required rows={3} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-medium focus:border-sky-500" placeholder="Alasan mengapa pengadaan ini ditolak..."></textarea>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-1">
+                    <button type="button" onClick={() => setShowRejectModal(null)} className="flex-1 py-2.5 bg-zinc-100 text-zinc-700 rounded-xl text-xs font-bold hover:bg-zinc-200 transition">Batal</button>
+                    <button type="submit" className="flex-1 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition shadow-md">
+                      Tolak Pengajuan
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     function ScannerModal({ user, onClose, appState }) {
+      // Keamanan: Cegah non-owner mengubah foto profil owner
+      if (user?.role === 'owner' && appState.user?.role !== 'owner') {
+        useEffect(() => {
+          appState.addToast('Akses Ditolak: Anda tidak memiliki akses untuk menambah foto Pemilik!', 'error');
+          onClose();
+        }, []);
+        return null;
+      }
+
       const videoRef = useRef(null);
       const canvasRef = useRef(null);
       const [stream, setStream] = useState(null);
@@ -5302,10 +6292,11 @@
     }
 
     function UserForm({ user, onSave, onCancel }) {
+      const app = useContext(AppContext);
       const [name, setName] = useState(user?.name || '');
       const [email, setEmail] = useState(user?.email || '');
       const [password, setPassword] = useState('');
-      const standardRoles = ['admin', 'cashier', 'dapur', 'owner', 'manager', 'supervisor', 'staff'];
+      const standardRoles = ['admin', 'cashier', 'dapur', 'owner', 'manager', 'supervisor', 'staff', 'keuangan'];
       const [role, setRole] = useState(() => {
         if (!user?.role) return 'cashier';
         return standardRoles.includes(user.role) ? user.role : 'custom';
@@ -5320,6 +6311,11 @@
         const selectedRole = role === 'custom' ? customRole.trim().toLowerCase() : role;
         if (!selectedRole) {
           alert('Role wajib diisi');
+          return;
+        }
+        const cleanRole = selectedRole.toLowerCase().replace(/[^a-z]/g, '');
+        if ((cleanRole === 'owner' || cleanRole === 'pemilik' || cleanRole.includes('owner') || cleanRole.includes('pemilik')) && app.user?.role !== 'owner') {
+          alert('Akses Ditolak: Anda tidak diizinkan membuat atau menetapkan role Pemilik/Owner!');
           return;
         }
         onSave({ name, email, password, role: selectedRole });
@@ -5353,6 +6349,7 @@
                     <option value="admin">Admin</option>
                     <option value="cashier">Kasir</option>
                     <option value="dapur">Dapur</option>
+                    <option value="keuangan">Keuangan</option>
                     <option value="manager">Manajer</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="staff">Staf</option>
@@ -5530,10 +6527,15 @@
         menuItems.push({ id: 'owner_dashboard', icon: 'layout-dashboard', label: 'Dashboard Owner' });
       }
       menuItems.push({ id: 'pos', icon: 'shopping-cart', label: 'Kasir POS' });
-      if (['admin', 'owner'].includes(user?.role)) {
+      if (['admin', 'owner', 'keuangan', 'manager'].includes(user?.role)) {
         menuItems.push({ id: 'products', icon: 'package', label: 'Produk' });
         menuItems.push({ id: 'reports', icon: 'bar-chart-3', label: 'Laporan' });
+      }
+      if (['admin', 'owner'].includes(user?.role)) {
         menuItems.push({ id: 'users', icon: 'users', label: 'Pengguna' });
+      }
+      if (['admin', 'owner', 'keuangan', 'manager'].includes(user?.role)) {
+        menuItems.push({ id: 'purchases', icon: 'shopping-bag', label: 'Pengadaan' });
       }
 
       return (
@@ -5607,10 +6609,15 @@
         menuItems.push({ id: 'owner_dashboard', icon: 'layout-dashboard', label: 'Dashboard' });
       }
       menuItems.push({ id: 'pos', icon: 'shopping-cart', label: 'POS' });
-      if (['admin', 'owner'].includes(app.user?.role)) {
+      if (['admin', 'owner', 'keuangan', 'manager'].includes(app.user?.role)) {
         menuItems.push({ id: 'products', icon: 'package', label: 'Produk' });
         menuItems.push({ id: 'reports', icon: 'bar-chart-3', label: 'Laporan' });
+      }
+      if (['admin', 'owner'].includes(app.user?.role)) {
         menuItems.push({ id: 'users', icon: 'users', label: 'Akun' });
+      }
+      if (['admin', 'owner', 'keuangan', 'manager'].includes(app.user?.role)) {
+        menuItems.push({ id: 'purchases', icon: 'shopping-bag', label: 'Pengadaan' });
       }
 
       return (
@@ -5629,7 +6636,7 @@
       const app = useContext(AppContext);
       const [showNotif, setShowNotif] = useState(false);
       const [now, setNow] = useState(new Date());
-      const titles = { owner_dashboard: 'Dashboard Owner', pos: 'Point of Sale', products: 'Produk', reports: 'Laporan', users: 'Pengguna' };
+      const titles = { owner_dashboard: 'Dashboard Owner', pos: 'Point of Sale', products: 'Produk', reports: 'Laporan', users: 'Pengguna', purchases: 'Manajemen Pengadaan' };
       
       const lowStockItems = useMemo(() => {
         return getDB().products.filter(p => p.active !== false && p.stock <= (p.minStock || 5));
@@ -5644,6 +6651,8 @@
 
       const db = getDB();
       const pendingReqs = db.bypassRequests.filter(r => r.status === 'pending');
+      const pendingPurchases = (db.purchases || []).filter(p => p.status === 'pending');
+      const totalNotifs = pendingReqs.length + (app.user?.role === 'owner' ? pendingPurchases.length : 0);
       const currentDateTime = now.toLocaleDateString('id-ID', {
         weekday: 'long',
         year: 'numeric',
@@ -5733,44 +6742,77 @@
               <div className="relative">
                 <button 
                   onClick={() => setShowNotif(!showNotif)} 
-                  className={`p-2 bg-zinc-50 border border-zinc-200 hover:bg-zinc-100 rounded-xl transition flex items-center justify-center ${pendingReqs.length > 0 ? 'text-amber-500 border-amber-250 animate-bounce' : 'text-zinc-500'}`}
-                  title="Notifikasi Izin Masuk"
+                  className={`p-2 bg-zinc-50 border border-zinc-200 hover:bg-zinc-100 rounded-xl transition flex items-center justify-center ${totalNotifs > 0 ? 'text-amber-500 border-amber-250 animate-bounce' : 'text-zinc-500'}`}
+                  title="Notifikasi Masuk"
                 >
                   <Icon name="bell" size={16} />
-                  {pendingReqs.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] w-4.5 h-4.5 flex items-center justify-center rounded-full font-bold">{pendingReqs.length}</span>
+                  {totalNotifs > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] w-4.5 h-4.5 flex items-center justify-center rounded-full font-bold">{totalNotifs}</span>
                   )}
                 </button>
 
                 {showNotif && (
                   <div className="absolute right-0 mt-2 w-80 bg-white border border-zinc-200 rounded-2xl shadow-xl z-[100] animate-[fadeIn_0.2s_ease-out] overflow-hidden">
                     <div className="p-4 bg-zinc-50 border-b border-zinc-100 flex justify-between items-center text-left">
-                      <span className="font-bold text-zinc-800 text-sm">Izin Masuk Kasir</span>
-                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">{pendingReqs.length} Menunggu</span>
+                      <span className="font-bold text-zinc-800 text-sm">Notifikasi Masuk</span>
+                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">{totalNotifs} Menunggu</span>
                     </div>
-                    <div className="max-h-64 overflow-y-auto custom-scroll divide-y divide-zinc-100">
-                      {pendingReqs.length === 0 ? (
-                        <div className="p-6 text-center text-zinc-400 text-xs font-medium">Tidak ada permintaan izin aktif</div>
+                    <div className="max-h-80 overflow-y-auto custom-scroll divide-y divide-zinc-100">
+                      {totalNotifs === 0 ? (
+                        <div className="p-6 text-center text-zinc-400 text-xs font-medium">Tidak ada pemberitahuan baru</div>
                       ) : (
-                        pendingReqs.map(req => (
-                          <div key={req.id} className="p-4 space-y-2.5 text-left text-xs">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-bold text-zinc-800">{req.name}</p>
-                                <p className="text-zinc-500 text-[10px]">{req.email}</p>
+                        <>
+                          {/* Bypass Requests */}
+                          {pendingReqs.map(req => (
+                            <div key={req.id} className="p-4 space-y-2 text-xs text-left">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-bold text-zinc-800 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    <span>Izin Masuk Kasir</span>
+                                  </p>
+                                  <p className="text-zinc-500 text-[10px] font-semibold mt-0.5">{req.name} ({req.email})</p>
+                                </div>
+                                <span className="text-[9px] text-zinc-450 font-mono">{new Date(req.time).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</span>
                               </div>
-                              <span className="text-[9px] text-zinc-400 font-mono">{new Date(req.time).toLocaleTimeString('id-ID')}</span>
+                              <div className="text-zinc-550 bg-zinc-50 p-2 rounded-lg font-mono text-[10px]">
+                                <div><span className="text-zinc-400">Lokasi:</span> {req.location}</div>
+                                <div className="truncate"><span className="text-zinc-400">Device:</span> {req.device}</div>
+                              </div>
+                              <div className="flex gap-2 pt-1">
+                                <button onClick={() => { app.approveBypassRequest(req.id); setShowNotif(false); }} className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[10px]">Setujui</button>
+                                <button onClick={() => { app.rejectBypassRequest(req.id); setShowNotif(false); }} className="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-[10px]">Tolak</button>
+                              </div>
                             </div>
-                            <div className="text-zinc-550 bg-zinc-50 p-2 rounded-lg font-mono text-[10px]">
-                              <div><span className="text-zinc-400">Lokasi:</span> {req.location}</div>
-                              <div className="truncate"><span className="text-zinc-400">Device:</span> {req.device}</div>
+                          ))}
+                          
+                          {/* Pending Purchase Proposals (Only for Owner) */}
+                          {app.user?.role === 'owner' && pendingPurchases.map(p => (
+                            <div key={p.id} className="p-4 space-y-2 text-xs text-left">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-bold text-zinc-800 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse"></span>
+                                    <span>Pengajuan Pengadaan</span>
+                                  </p>
+                                  <p className="text-zinc-500 text-[10px] font-semibold mt-0.5">Oleh: {p.proposedBy} ({p.proposedByRole === 'keuangan' ? 'Keuangan' : p.proposedByRole})</p>
+                                </div>
+                                <span className="text-[9px] text-zinc-455 font-mono">{new Date(p.date).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</span>
+                              </div>
+                              <div className="text-zinc-550 bg-sky-50/50 p-2.5 rounded-xl border border-sky-100/50 font-mono text-[10px]">
+                                <div className="font-bold text-zinc-800">{p.productName}</div>
+                                <div className="mt-1"><span className="text-zinc-400">Tipe:</span> <span className="font-bold capitalize">{p.type === 'buy' ? 'Beli Baru' : p.type === 'refund' ? 'Retur' : p.type === 'take' ? 'Ambil' : 'Void'}</span></div>
+                                <div><span className="text-zinc-400">Estimasi:</span> <span className="font-bold text-zinc-700">{p.qty} pcs @ Rp {p.cost?.toLocaleString('id-ID')}</span></div>
+                              </div>
+                              <button 
+                                onClick={() => { app.setPage('purchases'); setShowNotif(false); }} 
+                                className="w-full py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg font-bold text-[10px] flex items-center justify-center gap-1 transition shadow-sm"
+                              >
+                                <Icon name="eye" size={12} /> Tinjau Pengadaan
+                              </button>
                             </div>
-                            <div className="flex gap-2 pt-1">
-                              <button onClick={() => { app.approveBypassRequest(req.id); setShowNotif(false); }} className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold">Setujui</button>
-                              <button onClick={() => { app.rejectBypassRequest(req.id); setShowNotif(false); }} className="flex-1 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold">Tolak</button>
-                            </div>
-                          </div>
-                        ))
+                          ))}
+                        </>
                       )}
                     </div>
                   </div>
@@ -6092,6 +7134,7 @@
                     {appState.page === 'products' && <ProductsPage />}
                     {appState.page === 'reports' && <ReportsPage />}
                     {appState.page === 'users' && <UsersPage />}
+                    {appState.page === 'purchases' && <PurchasesPage />}
                   </div>
                 </main>
                 <BottomNav />

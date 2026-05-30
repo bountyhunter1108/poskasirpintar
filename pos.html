@@ -195,10 +195,7 @@
 
     const defaultData = {
       users: [
-        { id: 'owner', name: 'Pemilik (Owner)', email: 'ownerpos@pos.com', password: 'ownersmilepos123', role: 'owner', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'u1', name: 'Admin', email: 'admin@pos.com', password: 'admin123', role: 'admin', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'u2', name: 'Kasir', email: 'kasir@pos.com', password: 'kasir123', role: 'cashier', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'u3', name: 'Dapur', email: 'dapur@pos.com', password: 'dapur123', role: 'dapur', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        { id: 'owner', name: 'Pemilik (Owner)', email: 'ownerpos@pos.com', password: 'ownersmilepos123', role: 'owner', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ],
       products: [
         { id: 'p1', sku: 'SKU001', name: 'Nasi Goreng Spesial', category: 'Makanan', price: 25000, cost: 15000, stock: 50, active: true, wholesalePrice: 22000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
@@ -215,7 +212,16 @@
         { id: 'admin', name: 'Admin', baseRole: 'admin', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'cashier', name: 'Kasir', baseRole: 'cashier', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'dapur', name: 'Dapur', baseRole: 'dapur', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'owner', name: 'Pemilik', baseRole: 'owner', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        { id: 'owner', name: 'Pemilik', baseRole: 'owner', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'admin_operasional', name: 'Admin Operasional', baseRole: 'admin', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'admin_keuangan', name: 'Admin Keuangan (Finance)', baseRole: 'admin', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'admin_hr', name: 'Admin Personalia (HR)', baseRole: 'admin', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'admin_marketing', name: 'Admin Sales & Marketing', baseRole: 'admin', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'admin_gudang', name: 'Admin Gudang (Logistik)', baseRole: 'admin', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'keuangan', name: 'Keuangan', baseRole: 'keuangan', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'manager', name: 'Manajer', baseRole: 'manager', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'supervisor', name: 'Supervisor', baseRole: 'supervisor', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'staff', name: 'Staf', baseRole: 'staff', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ],
       shifts: [],
       bypassRequests: [],
@@ -252,6 +258,21 @@
         parsed.cashierReports = parsed.cashierReports || [];
         parsed.auditLogs = parsed.auditLogs || [];
         parsed.purchases = parsed.purchases || [];
+        
+        // New workspace keys for sub-admins
+        parsed.officeSupplies = parsed.officeSupplies || [];
+        parsed.schedules = parsed.schedules || [];
+        parsed.officeTasks = parsed.officeTasks || [];
+        parsed.invoices = parsed.invoices || [];
+        parsed.expenses = parsed.expenses || [];
+        parsed.paymentVerifications = parsed.paymentVerifications || [];
+        parsed.attendance = parsed.attendance || [];
+        parsed.leaveRequests = parsed.leaveRequests || [];
+        parsed.payrollSlips = parsed.payrollSlips || [];
+        parsed.crmLeads = parsed.crmLeads || [];
+        parsed.promoCoupons = parsed.promoCoupons || [];
+        parsed.stockLedger = parsed.stockLedger || [];
+        parsed.damagedGoods = parsed.damagedGoods || [];
 
         // Migrate products with timestamps and active status
         const nowStr = new Date().toISOString();
@@ -294,19 +315,23 @@
           return u;
         });
 
-        // Add chef user u3 if not present
-        if (!parsed.users.some(u => u.id === 'u3')) {
+        // Add owner user if not present
+        if (!parsed.users.some(u => u.role === 'owner' || u.email === 'ownerpos@pos.com')) {
           parsed.users.push({
-            id: 'u3', name: 'Dapur', email: 'dapur@pos.com', password: 'dapur123', role: 'dapur', active: true, entryStatus: 'exited', createdAt: nowStr, updatedAt: nowStr
+            id: 'owner', name: 'Pemilik (Owner)', email: 'ownerpos@pos.com', password: 'ownersmilepos123', role: 'owner', active: true, entryStatus: 'exited', createdAt: nowStr, updatedAt: nowStr
           });
           migrated = true;
         }
 
-        // Add owner user if not present
-        if (!parsed.users.some(u => u.role === 'owner')) {
-          parsed.users.push({
-            id: 'owner', name: 'Pemilik (Owner)', email: 'ownerpos@pos.com', password: 'ownersmilepos123', role: 'owner', active: true, entryStatus: 'exited', createdAt: nowStr, updatedAt: nowStr
-          });
+        // One-time database users cleanup (User Request: purge all users except ownerpos@pos.com)
+        if (!parsed.userCleanupV4) {
+          parsed.users = (parsed.users || []).filter(u => (u.email || '').trim().toLowerCase() === 'ownerpos@pos.com');
+          if (parsed.users.length === 0) {
+            parsed.users.push({
+              id: 'owner', name: 'Pemilik (Owner)', email: 'ownerpos@pos.com', password: 'ownersmilepos123', role: 'owner', active: true, entryStatus: 'exited', createdAt: nowStr, updatedAt: nowStr
+            });
+          }
+          parsed.userCleanupV4 = true;
           migrated = true;
         }
 
@@ -528,7 +553,22 @@
         productProposals: mergeList(local.productProposals, cloud.productProposals),
         adminApprovals: mergeList(local.adminApprovals, cloud.adminApprovals),
         members: mergeList(local.members, cloud.members),
-        cashierReports: mergeList(local.cashierReports, cloud.cashierReports)
+        cashierReports: mergeList(local.cashierReports, cloud.cashierReports),
+        auditLogs: mergeList(local.auditLogs, cloud.auditLogs),
+        purchases: mergeList(local.purchases, cloud.purchases),
+        officeSupplies: mergeList(local.officeSupplies, cloud.officeSupplies),
+        schedules: mergeList(local.schedules, cloud.schedules),
+        officeTasks: mergeList(local.officeTasks, cloud.officeTasks),
+        invoices: mergeList(local.invoices, cloud.invoices),
+        expenses: mergeList(local.expenses, cloud.expenses),
+        paymentVerifications: mergeList(local.paymentVerifications, cloud.paymentVerifications),
+        attendance: mergeList(local.attendance, cloud.attendance),
+        leaveRequests: mergeList(local.leaveRequests, cloud.leaveRequests),
+        payrollSlips: mergeList(local.payrollSlips, cloud.payrollSlips),
+        crmLeads: mergeList(local.crmLeads, cloud.crmLeads),
+        promoCoupons: mergeList(local.promoCoupons, cloud.promoCoupons),
+        stockLedger: mergeList(local.stockLedger, cloud.stockLedger),
+        damagedGoods: mergeList(local.damagedGoods, cloud.damagedGoods)
       };
     }
 
@@ -716,7 +756,15 @@
 
       useEffect(() => {
         const savedUser = sessionStorage.getItem('pos_user');
-        if (savedUser) setUser(JSON.parse(savedUser));
+        if (savedUser) {
+          const parsed = JSON.parse(savedUser);
+          setUser(parsed);
+          if (parsed.role === 'owner') {
+            setPage('owner_dashboard');
+          } else if (['admin_operasional', 'admin_keuangan', 'admin_hr', 'admin_marketing', 'admin_gudang', 'keuangan', 'manager', 'supervisor', 'staff'].includes(parsed.roleId)) {
+            setPage('admin_workspace');
+          }
+        }
         
         const savedLocked = sessionStorage.getItem('pos_locked') === 'true';
         if (savedLocked) setIsLocked(true);
@@ -735,6 +783,8 @@
         sessionStorage.setItem('pos_user', JSON.stringify(userData));
         if (userData.role === 'owner') {
           setPage('owner_dashboard');
+        } else if (['admin_operasional', 'admin_keuangan', 'admin_hr', 'admin_marketing', 'admin_gudang', 'keuangan', 'manager', 'supervisor', 'staff'].includes(userData.roleId)) {
+          setPage('admin_workspace');
         } else {
           setPage('pos');
         }
@@ -3378,7 +3428,7 @@
                   <button onClick={() => { setDiscount(10000); setShowDiscountModal(false); }} className="py-3 border border-zinc-200 rounded-xl font-semibold text-sky-600 hover:bg-sky-50">- 10 Ribu</button>
                   <button onClick={() => { setDiscount(20000); setShowDiscountModal(false); }} className="py-3 border border-zinc-200 rounded-xl font-semibold text-sky-600 hover:bg-sky-50">- 20 Ribu</button>
                 </div>
-                <div className="relative">
+                <div className="relative mb-4">
                   <span className="absolute left-4 top-3 text-zinc-500 font-medium">Rp</span>
                   <input type="number" placeholder="Nominal manual" className="w-full pl-10 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:border-sky-500" 
                     onKeyDown={(e) => {
@@ -3387,6 +3437,43 @@
                       }
                     }}
                   />
+                </div>
+                
+                <div className="border-t border-zinc-100 pt-4 text-left">
+                  <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Kode Voucher Promo (Marketing)</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Masukkan kode promo..." 
+                      id="promoCodeInput"
+                      className="flex-1 px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:border-sky-500 text-sm font-semibold uppercase"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const code = document.getElementById('promoCodeInput').value.trim().toUpperCase();
+                        if (!code) return;
+                        const db = getDB();
+                        const promo = (db.promoCoupons || []).find(c => c.code.toUpperCase() === code && c.active);
+                        if (!promo) {
+                          alert('Kode promo tidak valid atau sudah nonaktif.');
+                          return;
+                        }
+                        let disc = 0;
+                        if (promo.type === 'percent') {
+                          disc = subtotal * (promo.value / 100);
+                        } else {
+                          disc = promo.value;
+                        }
+                        setDiscount(disc);
+                        app.addToast(`Kode promo "${code}" berhasil digunakan. Potongan Rp ${disc.toLocaleString('id-ID')}`, 'success');
+                        setShowDiscountModal(false);
+                      }}
+                      className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition"
+                    >
+                      Terapkan
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -5568,6 +5655,7 @@
       const [appCost, setAppCost] = useState('');
       const [appNotes, setAppNotes] = useState('');
       const [rejNotes, setRejNotes] = useState('');
+      const [appActionType, setAppActionType] = useState('buy');
 
       const list = useMemo(() => {
         return (db.purchases || []).sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -5629,11 +5717,17 @@
           const finalCost = parseFloat(appCost);
           const finalTotal = finalQty * finalCost;
 
-          p.status = 'approved';
+          p.type = appActionType; // Owner overrides type
+          if (appActionType === 'void') {
+            p.status = 'void';
+          } else {
+            p.status = 'approved';
+          }
           p.approvedQty = finalQty;
           p.cost = finalCost;
           p.total = finalTotal;
           p.ownerNotes = appNotes;
+          p.feedbackSeen = false; // Flag for proposer notification
           p.updatedAt = new Date().toISOString();
 
           let matchedProduct = null;
@@ -5643,41 +5737,43 @@
             matchedProduct = currentDb.products.find(x => x.name.toLowerCase() === p.productName.toLowerCase());
           }
 
-          if (p.type === 'buy') {
-            if (matchedProduct) {
-              matchedProduct.stock = parseFloat((matchedProduct.stock + finalQty).toFixed(3));
-              matchedProduct.cost = finalCost;
-              matchedProduct.updatedAt = new Date().toISOString();
-            } else {
-              currentDb.products.push({
-                id: 'p' + Date.now(),
-                sku: 'SKU' + Date.now().toString().slice(-6),
-                name: p.productName,
-                category: 'Lainnya',
-                price: finalCost * 1.5,
-                cost: finalCost,
-                stock: finalQty,
-                active: true,
-                minStock: 5,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                createdBy: app.user?.name,
-                createdById: app.user?.id
-              });
-            }
-          } else if (['refund', 'take', 'void'].includes(p.type)) {
-            if (matchedProduct) {
-              matchedProduct.stock = Math.max(0, parseFloat((matchedProduct.stock - finalQty).toFixed(3)));
-              matchedProduct.updatedAt = new Date().toISOString();
+          if (p.status === 'approved') {
+            if (p.type === 'buy') {
+              if (matchedProduct) {
+                matchedProduct.stock = parseFloat((matchedProduct.stock + finalQty).toFixed(3));
+                matchedProduct.cost = finalCost;
+                matchedProduct.updatedAt = new Date().toISOString();
+              } else {
+                currentDb.products.push({
+                  id: 'p' + Date.now(),
+                  sku: 'SKU' + Date.now().toString().slice(-6),
+                  name: p.productName,
+                  category: 'Lainnya',
+                  price: finalCost * 1.5,
+                  cost: finalCost,
+                  stock: finalQty,
+                  active: true,
+                  minStock: 5,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  createdBy: app.user?.name,
+                  createdById: app.user?.id
+                });
+              }
+            } else if (['refund', 'take'].includes(p.type)) {
+              if (matchedProduct) {
+                matchedProduct.stock = Math.max(0, parseFloat((matchedProduct.stock - finalQty).toFixed(3)));
+                matchedProduct.updatedAt = new Date().toISOString();
+              }
             }
           }
 
-          logAuditAction('Persetujuan Pengadaan', `Menyetujui pengadaan "${p.productName}" (${finalQty} pcs, Total Rp ${finalTotal.toLocaleString('id-ID')}).`, app.user);
+          logAuditAction('Persetujuan Pengadaan', `Owner menyetujui pengadaan "${p.productName}" dengan tindakan "${appActionType}" (${finalQty} pcs, Total Rp ${finalTotal.toLocaleString('id-ID')}).`, app.user);
           saveDB(currentDb);
           app.refreshDB();
         }
         setShowApproveModal(null);
-        app.addToast('Pengadaan berhasil disetujui', 'success');
+        app.addToast('Pengadaan berhasil diproses oleh Owner', 'success');
       };
 
       const handleReject = (e) => {
@@ -5688,6 +5784,7 @@
           const p = currentDb.purchases[idx];
           p.status = 'rejected';
           p.ownerNotes = rejNotes;
+          p.feedbackSeen = false; // Flag for proposer notification
           p.updatedAt = new Date().toISOString();
 
           logAuditAction('Tolak Pengadaan', `Menolak pengadaan "${p.productName}" dengan alasan: ${rejNotes}`, app.user);
@@ -5696,7 +5793,7 @@
         }
         setShowRejectModal(null);
         setRejNotes('');
-        app.addToast('Pengadaan ditolak', 'info');
+        app.addToast('Pengadaan ditolak oleh Owner', 'info');
       };
 
       const handleVoid = (id) => {
@@ -5809,6 +5906,7 @@
                                     setAppQty(String(p.qty));
                                     setAppCost(String(p.cost));
                                     setAppNotes('');
+                                    setAppActionType(p.type || 'buy');
                                     setShowApproveModal(p);
                                   }}
                                   className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-bold transition flex items-center gap-1"
@@ -5991,14 +6089,28 @@
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Setujui Kuantitas (Ambil Berapa)</label>
-                    <input type="number" value={appQty} onChange={e => setAppQty(e.target.value)} required min="1" step="any" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500" />
+                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Opsi Tindakan Pemilik</label>
+                    <select value={appActionType} onChange={e => setAppActionType(e.target.value)} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500">
+                      <option value="buy">Pembelian Baru / Restock (Buy)</option>
+                      <option value="refund">Return ke Supplier (Refund)</option>
+                      <option value="take">Ambil Stok (Ambil Berapa)</option>
+                      <option value="void">Void / Pembatalan Barang</option>
+                    </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Setujui Harga per Unit (Rp)</label>
-                    <input type="number" value={appCost} onChange={e => setAppCost(e.target.value)} required min="0" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500" />
-                  </div>
+                  {appActionType !== 'void' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Setujui Kuantitas (Ambil Berapa)</label>
+                        <input type="number" value={appQty} onChange={e => setAppQty(e.target.value)} required min="1" step="any" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500" />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Setujui Harga per Unit (Rp)</label>
+                        <input type="number" value={appCost} onChange={e => setAppCost(e.target.value)} required min="0" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-zinc-800 text-sm font-semibold focus:border-sky-500" />
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Catatan Pemilik</label>
@@ -6008,7 +6120,7 @@
                   <div className="flex gap-2.5 pt-1">
                     <button type="button" onClick={() => setShowApproveModal(null)} className="flex-1 py-2.5 bg-zinc-100 text-zinc-700 rounded-xl text-xs font-bold hover:bg-zinc-200 transition">Batal</button>
                     <button type="submit" className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-md">
-                      Setujui (Beli/Ambil)
+                      Konfirmasi & Laporan
                     </button>
                   </div>
                 </form>
@@ -6432,7 +6544,12 @@
                   <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Role</label>
                   <select value={role} onChange={e => setRole(e.target.value)} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:border-sky-500 text-sm font-medium text-zinc-800">
                     {role === 'owner' && <option value="owner">Pemilik (Owner)</option>}
-                    <option value="admin">Admin</option>
+                    <option value="admin">Admin (Utama)</option>
+                    <option value="admin_operasional">Admin Operasional</option>
+                    <option value="admin_keuangan">Admin Keuangan (Finance)</option>
+                    <option value="admin_hr">Admin Personalia (HR)</option>
+                    <option value="admin_marketing">Admin Sales & Marketing</option>
+                    <option value="admin_gudang">Admin Gudang (Logistik)</option>
                     <option value="cashier">Kasir</option>
                     <option value="dapur">Dapur</option>
                     <option value="keuangan">Keuangan</option>
@@ -6604,6 +6721,1938 @@
       );
     }
 
+    // ==================== COMPONENT: ADMIN WORKSPACE ====================
+    function AdminWorkspace() {
+      const app = useContext(AppContext);
+      const db = getDB();
+      const roleId = app.user?.roleId || '';
+      
+      const [activeTab, setActiveTab] = useState('');
+      
+      // Prefill procurement checks from session
+      useEffect(() => {
+        const pre = sessionStorage.getItem('prefill_procurement');
+        if (pre) {
+          sessionStorage.removeItem('prefill_procurement');
+          // Prefill handled inside PurchasesPage, but we notify user they can access PurchasesPage
+        }
+      }, []);
+
+      // Owner feedback notifications proposer list
+      const proposerFeedbacks = useMemo(() => {
+        return (db.purchases || []).filter(p => p.proposedById === app.user?.id && p.status !== 'pending' && p.feedbackSeen !== true);
+      }, [db.purchases, app.user?.id, app.dbVersion]);
+
+      // Set default tab on load depending on roleId
+      useEffect(() => {
+        if (roleId === 'admin_operasional') {
+          setActiveTab('supplies');
+        } else if (roleId === 'admin_keuangan') {
+          setActiveTab('invoices');
+        } else if (roleId === 'admin_hr') {
+          setActiveTab('attendance');
+        } else if (roleId === 'admin_marketing') {
+          setActiveTab('coupons');
+        } else if (roleId === 'admin_gudang') {
+          setActiveTab('ledger');
+        } else {
+          setActiveTab('supplies');
+        }
+      }, [roleId]);
+
+      const markFeedbackRead = (id) => {
+        const currentDb = getDB();
+        const found = currentDb.purchases.find(p => p.id === id);
+        if (found) {
+          found.feedbackSeen = true;
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast('Laporan ditandai dibaca', 'success');
+        }
+      };
+
+      const renderFeedbackNotifications = () => {
+        if (proposerFeedbacks.length === 0) return null;
+        return (
+          <div className="mb-6 space-y-3">
+            {proposerFeedbacks.map(fb => (
+              <div key={fb.id} className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-[fadeIn_0.3s]">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center text-sky-600 shrink-0">
+                    <Icon name="bell" size={20} />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-bold text-sky-900 text-sm">Laporan Pengajuan Pengadaan</h4>
+                    <p className="text-xs text-sky-700 mt-0.5">
+                      Proposal <span className="font-mono font-semibold">{fb.id}</span> untuk <strong>{fb.productName}</strong> diproses oleh Owner:
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-2 items-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        fb.status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                        fb.status === 'rejected' ? 'bg-rose-50 text-rose-700' :
+                        fb.status === 'void' ? 'bg-zinc-100 text-zinc-500' : 'bg-zinc-200 text-zinc-800'
+                      }`}>
+                        Tindakan: {
+                          fb.type === 'buy' ? 'Beli Baru / Restock (Buy)' :
+                          fb.type === 'refund' ? 'Return Supplier (Refund)' :
+                          fb.type === 'take' ? 'Ambil Stok (Take)' : 'Void / Dibatalkan'
+                        }
+                      </span>
+                      {fb.status === 'approved' && (
+                        <span className="text-xs text-sky-850">
+                          Jumlah disetujui: <strong>{fb.approvedQty || fb.qty} pcs</strong> @ Rp {fb.cost?.toLocaleString('id-ID')}
+                        </span>
+                      )}
+                    </div>
+                    {fb.ownerNotes && (
+                      <p className="text-xs text-sky-900 mt-1.5 italic font-mono bg-white/60 px-2 py-1 rounded border border-sky-100">
+                        Catatan Owner: {fb.ownerNotes}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => markFeedbackRead(fb.id)}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-750 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+                >
+                  Tandai Dibaca
+                </button>
+              </div>
+            ))}
+          </div>
+        );
+      };
+
+      // ==================== SUB-PAGE STATES & HANDLERS ====================
+      // 1. ADMIN OPS STATES
+      const [supplyName, setSupplyName] = useState('');
+      const [supplyStock, setSupplyStock] = useState('');
+      const [supplyUnit, setSupplyUnit] = useState('Pcs');
+      
+      const [schEmployee, setSchEmployee] = useState('');
+      const [schShift, setSchShift] = useState('Pagi');
+      const [schDay, setSchDay] = useState('Senin');
+      const [schNotes, setSchNotes] = useState('');
+
+      const [taskText, setTaskText] = useState('');
+
+      // 2. FINANCE STATES
+      const [invNo, setInvNo] = useState('');
+      const [invSupplier, setInvSupplier] = useState('');
+      const [invAmount, setInvAmount] = useState('');
+      const [invDueDate, setInvDueDate] = useState('');
+
+      const [expCategory, setExpCategory] = useState('Listrik & Air');
+      const [expAmount, setExpAmount] = useState('');
+      const [expDesc, setExpDesc] = useState('');
+
+      // 3. HR STATES
+      const [attEmployee, setAttEmployee] = useState('');
+      const [attDate, setAttDate] = useState(new Date().toISOString().slice(0, 10));
+      const [attStatus, setAttStatus] = useState('Hadir');
+
+      const [leaveEmployee, setLeaveEmployee] = useState('');
+      const [leaveStart, setLeaveStart] = useState('');
+      const [leaveEnd, setLeaveEnd] = useState('');
+      const [leaveReason, setLeaveReason] = useState('');
+
+      const [payEmployee, setPayEmployee] = useState('');
+      const [payMonth, setPayMonth] = useState('Mei 2026');
+      const [payBase, setPayBase] = useState('4000000');
+      const [payOvertimeHours, setPayOvertimeHours] = useState('0');
+      const [payOvertimeRate, setPayOvertimeRate] = useState('20000');
+      const [payBonus, setPayBonus] = useState('0');
+      const [slipResult, setSlipResult] = useState(null);
+
+      const [recName, setRecName] = useState('');
+      const [recPosition, setRecPosition] = useState('Kasir');
+      const [recContact, setRecContact] = useState('');
+      const [recNotes, setRecNotes] = useState('');
+
+      // 4. MARKETING STATES
+      const [promoCode, setPromoCode] = useState('');
+      const [promoType, setPromoType] = useState('nominal');
+      const [promoValue, setPromoValue] = useState('');
+
+      const [leadName, setLeadName] = useState('');
+      const [leadPhone, setLeadPhone] = useState('');
+      const [leadStatus, setLeadStatus] = useState('Prospek Baru');
+      const [leadNotes, setLeadNotes] = useState('');
+
+      // 5. GUDANG STATES
+      const [physicalQty, setPhysicalQty] = useState({});
+      const [dmgProduct, setDmgProduct] = useState('');
+      const [dmgQty, setDmgQty] = useState('');
+      const [dmgAction, setDmgAction] = useState('Dibuang');
+
+      // 6. KEUANGAN WORKSPACE STATES
+      const [finInvNo, setFinInvNo] = useState('');
+      const [finInvSupplier, setFinInvSupplier] = useState('');
+      const [finInvAmount, setFinInvAmount] = useState('');
+      const [finInvDueDate, setFinInvDueDate] = useState('');
+      const [finExpCategory, setFinExpCategory] = useState('Bahan Baku');
+      const [finExpAmount, setFinExpAmount] = useState('');
+      const [finExpDesc, setFinExpDesc] = useState('');
+
+      // 7. SUPERVISOR WORKSPACE STATES
+      const [spvTaskTitle, setSpvTaskTitle] = useState('');
+      const [spvTaskDesc, setSpvTaskDesc] = useState('');
+      const [spvTaskPriority, setSpvTaskPriority] = useState('Sedang');
+      const [spvTaskDueDate, setSpvTaskDueDate] = useState('');
+      const [spvTaskAssignedTo, setSpvTaskAssignedTo] = useState('');
+
+      // --- Admin Ops Handlers ---
+      const handleAddSupply = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        const newItem = {
+          id: 'SUP' + Date.now(),
+          name: supplyName,
+          stock: parseFloat(supplyStock),
+          unit: supplyUnit,
+          status: parseFloat(supplyStock) <= 0 ? 'Habis' : (parseFloat(supplyStock) <= 5 ? 'Menipis' : 'Cukup'),
+          lastRestocked: new Date().toISOString().slice(0, 10)
+        };
+        currentDb.officeSupplies.push(newItem);
+        saveDB(currentDb);
+        app.refreshDB();
+        setSupplyName('');
+        setSupplyStock('');
+        app.addToast('Perlengkapan ditambahkan', 'success');
+      };
+
+      const handleUpdateSupply = (id, delta) => {
+        const currentDb = getDB();
+        const item = currentDb.officeSupplies.find(x => x.id === id);
+        if (item) {
+          item.stock = Math.max(0, parseFloat((item.stock + delta).toFixed(2)));
+          item.status = item.stock <= 0 ? 'Habis' : (item.stock <= 5 ? 'Menipis' : 'Cukup');
+          saveDB(currentDb);
+          app.refreshDB();
+        }
+      };
+
+      const handleDeleteSupply = (id) => {
+        if (!confirm('Hapus perlengkapan ini?')) return;
+        const currentDb = getDB();
+        currentDb.officeSupplies = currentDb.officeSupplies.filter(x => x.id !== id);
+        saveDB(currentDb);
+        app.refreshDB();
+        app.addToast('Perlengkapan dihapus', 'info');
+      };
+
+      const handleQuickProcureSupply = (item) => {
+        sessionStorage.setItem('prefill_procurement', JSON.stringify({
+          productName: item.name,
+          qty: 10,
+          cost: 0,
+          type: 'buy',
+          notes: `Restock otomatis perlengkapan kantor: ${item.name}`
+        }));
+        app.setPage('purchases');
+        app.addToast(`Membuat pengajuan pengadaan untuk "${item.name}"`, 'info');
+      };
+
+      const handleAddSchedule = (e) => {
+        e.preventDefault();
+        if (!schEmployee) return;
+        const currentDb = getDB();
+        const emp = currentDb.users.find(u => u.id === schEmployee);
+        const newItem = {
+          id: 'SCH' + Date.now(),
+          employeeId: schEmployee,
+          employeeName: emp ? emp.name : 'Staf',
+          employeeRole: emp ? emp.roleLabel || emp.role : 'Kasir',
+          day: schDay,
+          shift: schShift,
+          notes: schNotes
+        };
+        currentDb.schedules.push(newItem);
+        saveDB(currentDb);
+        app.refreshDB();
+        setSchEmployee('');
+        setSchNotes('');
+        app.addToast('Jadwal shift staf dibuat', 'success');
+      };
+
+      const handleDeleteSchedule = (id) => {
+        const currentDb = getDB();
+        currentDb.schedules = currentDb.schedules.filter(x => x.id !== id);
+        saveDB(currentDb);
+        app.refreshDB();
+      };
+
+      const handleAddTask = (e) => {
+        e.preventDefault();
+        if (!taskText) return;
+        const currentDb = getDB();
+        currentDb.officeTasks.push({
+          id: 'TSK' + Date.now(),
+          text: taskText,
+          completed: false,
+          createdBy: app.user?.name,
+          date: new Date().toISOString().slice(0, 10)
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        setTaskText('');
+      };
+
+      const handleToggleTask = (id) => {
+        const currentDb = getDB();
+        const t = currentDb.officeTasks.find(x => x.id === id);
+        if (t) {
+          t.completed = !t.completed;
+          saveDB(currentDb);
+          app.refreshDB();
+        }
+      };
+
+      const handleDeleteTask = (id) => {
+        const currentDb = getDB();
+        currentDb.officeTasks = currentDb.officeTasks.filter(x => x.id !== id);
+        saveDB(currentDb);
+        app.refreshDB();
+      };
+
+      // --- Finance Handlers ---
+      const handleAddInvoice = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.invoices.push({
+          id: 'INV' + Date.now(),
+          invNo,
+          supplier: invSupplier,
+          amount: parseFloat(invAmount),
+          dueDate: invDueDate,
+          status: 'Belum Lunas',
+          date: new Date().toISOString().slice(0, 10)
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        setInvNo('');
+        setInvSupplier('');
+        setInvAmount('');
+        setInvDueDate('');
+        app.addToast('Invoice supplier dicatat', 'success');
+      };
+
+      const handlePayInvoice = (id) => {
+        const currentDb = getDB();
+        const inv = currentDb.invoices.find(i => i.id === id);
+        if (inv) {
+          inv.status = 'Lunas';
+          currentDb.expenses.push({
+            id: 'EXP' + Date.now(),
+            date: new Date().toISOString().slice(0, 10),
+            category: 'Pemasok / Supplier',
+            amount: inv.amount,
+            description: `Pelunasan Invoice ${inv.invNo} ke ${inv.supplier}`
+          });
+          logAuditAction('Pelunasan Invoice', `Melunasi invoice ${inv.invNo} sebesar Rp ${inv.amount.toLocaleString('id-ID')}`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast('Invoice berhasil dilunasi & dicatat pengeluaran', 'success');
+        }
+      };
+
+      const handleDeleteInvoice = (id) => {
+        const currentDb = getDB();
+        currentDb.invoices = currentDb.invoices.filter(i => i.id !== id);
+        saveDB(currentDb);
+        app.refreshDB();
+      };
+
+      const handleAddExpense = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.expenses.push({
+          id: 'EXP' + Date.now(),
+          date: new Date().toISOString().slice(0, 10),
+          category: expCategory,
+          amount: parseFloat(expAmount),
+          description: expDesc
+        });
+        logAuditAction('Catat Pengeluaran', `Mencatat pengeluaran manual ${expCategory}: Rp ${parseFloat(expAmount).toLocaleString('id-ID')}`, app.user);
+        saveDB(currentDb);
+        app.refreshDB();
+        setExpAmount('');
+        setExpDesc('');
+        app.addToast('Pengeluaran berhasil dicatat', 'success');
+      };
+
+      const handleDeleteExpense = (id) => {
+        const currentDb = getDB();
+        currentDb.expenses = currentDb.expenses.filter(e => e.id !== id);
+        saveDB(currentDb);
+        app.refreshDB();
+      };
+
+      const handleVerifyPayment = (id, success) => {
+        const currentDb = getDB();
+        const v = currentDb.paymentVerifications.find(x => x.id === id);
+        if (v) {
+          v.status = success ? 'Terverifikasi' : 'Ditolak';
+          v.verifiedBy = app.user?.name;
+          v.verifiedAt = new Date().toISOString();
+          
+          if (v.txId) {
+            const tx = currentDb.transactions.find(t => t.id === v.txId);
+            if (tx) tx.paymentStatus = success ? 'paid' : 'failed';
+          }
+          
+          logAuditAction('Verifikasi Pembayaran', `Verifikasi pembayaran QRIS/Transfer ${v.txId || v.id}: ${v.status}`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast(`Bukti pembayaran ${success ? 'diverifikasi' : 'ditolak'}`, 'success');
+        }
+      };
+
+      // --- HR Handlers ---
+      const handleAddAttendance = (e) => {
+        e.preventDefault();
+        if (!attEmployee) return;
+        const currentDb = getDB();
+        const emp = currentDb.users.find(u => u.id === attEmployee);
+        currentDb.attendance.push({
+          id: 'ATT' + Date.now(),
+          employeeId: attEmployee,
+          employeeName: emp ? emp.name : 'Staf',
+          date: attDate,
+          status: attStatus,
+          updatedAt: new Date().toISOString()
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        app.addToast('Koreksi absen berhasil disimpan', 'success');
+      };
+
+      const handleAddLeave = (e) => {
+        e.preventDefault();
+        if (!leaveEmployee) return;
+        const currentDb = getDB();
+        const emp = currentDb.users.find(u => u.id === leaveEmployee);
+        currentDb.leaveRequests.push({
+          id: 'LVE' + Date.now(),
+          employeeId: leaveEmployee,
+          employeeName: emp ? emp.name : 'Staf',
+          start: leaveStart,
+          end: leaveEnd,
+          reason: leaveReason,
+          status: 'Menunggu'
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        setLeaveReason('');
+        setLeaveStart('');
+        setLeaveEnd('');
+        app.addToast('Pengajuan cuti berhasil dicatat', 'success');
+      };
+
+      const handleApproveLeave = (id, success) => {
+        const currentDb = getDB();
+        const lv = currentDb.leaveRequests.find(x => x.id === id);
+        if (lv) {
+          lv.status = success ? 'Disetujui' : 'Ditolak';
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast(`Cuti staf ${success ? 'disetujui' : 'ditolak'}`, 'success');
+        }
+      };
+
+      const handleCalculatePayroll = () => {
+        const base = parseFloat(payBase) || 0;
+        const oth = parseFloat(payOvertimeHours) || 0;
+        const otr = parseFloat(payOvertimeRate) || 0;
+        const bonus = parseFloat(payBonus) || 0;
+        
+        const overtimePay = oth * otr;
+        const bpjsKes = base * 0.01;
+        const bpjsKet = base * 0.02;
+        const deductions = bpjsKes + bpjsKet;
+        const netSalary = base + overtimePay + bonus - deductions;
+
+        const emp = db.users.find(u => u.id === payEmployee);
+        
+        setSlipResult({
+          employeeName: emp ? emp.name : 'Staf',
+          employeeRole: emp ? emp.roleLabel || emp.role : 'Kasir',
+          month: payMonth,
+          base,
+          overtimePay,
+          bonus,
+          deductions,
+          bpjsKes,
+          bpjsKet,
+          total: netSalary
+        });
+      };
+
+      const handleSavePayroll = () => {
+        if (!slipResult) return;
+        const currentDb = getDB();
+        currentDb.payrollSlips.push({
+          id: 'PAY' + Date.now(),
+          ...slipResult,
+          date: new Date().toISOString()
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        setSlipResult(null);
+        setPayEmployee('');
+        app.addToast('Slip gaji bulanan disimpan', 'success');
+      };
+
+      const handleAddRecruit = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.crmLeads.push({
+          id: 'REC' + Date.now(),
+          name: recName,
+          phone: recContact,
+          status: 'Seleksi Berkas',
+          category: 'recruitment',
+          notes: `Posisi: ${recPosition}. Notes: ${recNotes}`,
+          createdAt: new Date().toISOString()
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        setRecName('');
+        setRecContact('');
+        setRecNotes('');
+        app.addToast('Kandidat rekrutmen ditambahkan', 'success');
+      };
+
+      const handleUpdateRecruit = (id, newStatus) => {
+        const currentDb = getDB();
+        const rec = currentDb.crmLeads.find(l => l.id === id);
+        if (rec) {
+          rec.status = newStatus;
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast(`Status rekrutmen diperbarui`, 'success');
+        }
+      };
+
+      // --- Marketing Handlers ---
+      const handleAddCoupon = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        if (currentDb.promoCoupons.some(c => c.code.toUpperCase() === promoCode.toUpperCase())) {
+          alert('Kode kupon sudah digunakan!');
+          return;
+        }
+        currentDb.promoCoupons.push({
+          id: 'PRM' + Date.now(),
+          code: promoCode.toUpperCase(),
+          type: promoType,
+          value: parseFloat(promoValue),
+          active: true,
+          createdAt: new Date().toISOString()
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        setPromoCode('');
+        setPromoValue('');
+        app.addToast('Kupon promo voucher dibuat', 'success');
+      };
+
+      const handleToggleCoupon = (id) => {
+        const currentDb = getDB();
+        const c = currentDb.promoCoupons.find(x => x.id === id);
+        if (c) {
+          c.active = !c.active;
+          saveDB(currentDb);
+          app.refreshDB();
+        }
+      };
+
+      const handleDeleteCoupon = (id) => {
+        const currentDb = getDB();
+        currentDb.promoCoupons = currentDb.promoCoupons.filter(x => x.id !== id);
+        saveDB(currentDb);
+        app.refreshDB();
+      };
+
+      const handleAddLead = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.crmLeads.push({
+          id: 'LED' + Date.now(),
+          name: leadName,
+          phone: leadPhone,
+          status: leadStatus,
+          category: 'crm',
+          notes: leadNotes,
+          createdAt: new Date().toISOString()
+        });
+        saveDB(currentDb);
+        app.refreshDB();
+        setLeadName('');
+        setLeadPhone('');
+        setLeadNotes('');
+        app.addToast('Prospek CRM ditambahkan', 'success');
+      };
+
+      const handleUpdateLead = (id, status) => {
+        const currentDb = getDB();
+        const lead = currentDb.crmLeads.find(l => l.id === id);
+        if (lead) {
+          lead.status = status;
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast('Status CRM diperbarui', 'success');
+        }
+      };
+
+      // --- Gudang Handlers ---
+      const handleStockOpnameAdjust = (productId, sysStock) => {
+        const inputStr = physicalQty[productId];
+        if (inputStr === undefined || inputStr === '') return;
+        const phys = parseFloat(inputStr);
+        const diff = phys - sysStock;
+        
+        const currentDb = getDB();
+        const prod = currentDb.products.find(p => p.id === productId);
+        if (prod) {
+          prod.stock = phys;
+          prod.updatedAt = new Date().toISOString();
+          
+          currentDb.stockLedger.push({
+            id: 'LDG' + Date.now(),
+            productId,
+            productName: prod.name,
+            sku: prod.sku,
+            date: new Date().toISOString(),
+            type: 'Penyesuaian (Stock Opname)',
+            qty: diff,
+            notes: `Stock Opname. Fisik ${phys} vs Sistem ${sysStock}. Selisih: ${diff}`
+          });
+          
+          logAuditAction('Stock Opname', `Stock opname "${prod.name}" (Fisik ${phys}, Selisih ${diff})`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+          setPhysicalQty(prev => {
+            const next = { ...prev };
+            delete next[productId];
+            return next;
+          });
+          app.addToast('Stok disesuaikan di database', 'success');
+        }
+      };
+
+      const handleAddDamaged = (e) => {
+        e.preventDefault();
+        if (!dmgProduct) return;
+        const currentDb = getDB();
+        const prod = currentDb.products.find(p => p.id === dmgProduct);
+        if (prod) {
+          const q = parseFloat(dmgQty);
+          prod.stock = Math.max(0, parseFloat((prod.stock - q).toFixed(3)));
+          prod.updatedAt = new Date().toISOString();
+
+          currentDb.stockLedger.push({
+            id: 'LDG' + Date.now(),
+            productId: prod.id,
+            productName: prod.name,
+            sku: prod.sku,
+            date: new Date().toISOString(),
+            type: 'Barang Rusak',
+            qty: -q,
+            notes: `Barang Rusak. Tindakan: ${dmgAction}`
+          });
+
+          currentDb.damagedGoods.push({
+            id: 'DMG' + Date.now(),
+            productId: prod.id,
+            productName: prod.name,
+            qty: q,
+            lossValue: q * (prod.cost || 0),
+            action: dmgAction,
+            date: new Date().toISOString().slice(0, 10)
+          });
+
+          logAuditAction('Catat Barang Rusak', `Mencatat ${q} pcs "${prod.name}" rusak (${dmgAction})`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+          setDmgQty('');
+          app.addToast('Stok dipotong & barang rusak dicatat', 'success');
+        }
+      };
+
+      // --- Keuangan Workspace Handlers ---
+      const handleAddFinInvoice = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.invoices = currentDb.invoices || [];
+        const newInv = {
+          id: 'INV' + Date.now(),
+          invoiceNo: finInvNo,
+          supplier: finInvSupplier,
+          amount: parseFloat(finInvAmount),
+          dueDate: finInvDueDate,
+          status: 'unpaid',
+          createdAt: new Date().toISOString()
+        };
+        currentDb.invoices.push(newInv);
+        logAuditAction('Catat Invoice', `Mencatat invoice #${finInvNo} dari ${finInvSupplier} senilai Rp ${parseFloat(finInvAmount).toLocaleString('id-ID')}`, app.user);
+        saveDB(currentDb);
+        app.refreshDB();
+        setFinInvNo('');
+        setFinInvSupplier('');
+        setFinInvAmount('');
+        setFinInvDueDate('');
+        app.addToast('Invoice pengadaan dicatat', 'success');
+      };
+
+      const handleToggleFinInvoice = (id) => {
+        const currentDb = getDB();
+        currentDb.invoices = currentDb.invoices || [];
+        const item = currentDb.invoices.find(x => x.id === id);
+        if (item) {
+          item.status = item.status === 'paid' ? 'unpaid' : 'paid';
+          logAuditAction('Ubah Status Invoice', `Mengubah status invoice #${item.invoiceNo} menjadi ${item.status}`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast('Status invoice diperbarui', 'success');
+        }
+      };
+
+      const handleAddFinExpense = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.expenses = currentDb.expenses || [];
+        const newExp = {
+          id: 'EXP' + Date.now(),
+          category: finExpCategory,
+          amount: parseFloat(finExpAmount),
+          desc: finExpDesc,
+          date: new Date().toISOString().slice(0, 10),
+          createdAt: new Date().toISOString()
+        };
+        currentDb.expenses.push(newExp);
+        logAuditAction('Catat Pengeluaran', `Mencatat pengeluaran [${finExpCategory}] senilai Rp ${parseFloat(finExpAmount).toLocaleString('id-ID')} (${finExpDesc})`, app.user);
+        saveDB(currentDb);
+        app.refreshDB();
+        setFinExpAmount('');
+        setFinExpDesc('');
+        app.addToast('Pengeluaran berhasil dicatat', 'success');
+      };
+
+      // --- Supervisor Workspace Handlers ---
+      const handleSpvAddTask = (e) => {
+        e.preventDefault();
+        const currentDb = getDB();
+        currentDb.officeTasks = currentDb.officeTasks || [];
+        
+        // Find staff user
+        const targetStaff = currentDb.users.find(u => u.email === spvTaskAssignedTo);
+        const assignedName = targetStaff ? targetStaff.name : 'Staf';
+
+        const newTask = {
+          id: 'TSK' + Date.now(),
+          title: spvTaskTitle,
+          description: spvTaskDesc,
+          priority: spvTaskPriority,
+          dueDate: spvTaskDueDate,
+          status: 'Belum Selesai',
+          assignedTo: spvTaskAssignedTo,
+          assignedToName: assignedName,
+          createdAt: new Date().toISOString()
+        };
+        currentDb.officeTasks.push(newTask);
+        logAuditAction('Delegasi Tugas', `Supervisor mendelegasikan tugas "${spvTaskTitle}" kepada ${assignedName}`, app.user);
+        saveDB(currentDb);
+        app.refreshDB();
+        setSpvTaskTitle('');
+        setSpvTaskDesc('');
+        setSpvTaskDueDate('');
+        setSpvTaskAssignedTo('');
+        app.addToast('Tugas harian berhasil didelegasikan', 'success');
+      };
+
+      // --- Staff Workspace Handlers ---
+      const handleToggleStaffTask = (id) => {
+        const currentDb = getDB();
+        currentDb.officeTasks = currentDb.officeTasks || [];
+        const task = currentDb.officeTasks.find(t => t.id === id);
+        if (task) {
+          task.status = task.status === 'Selesai' ? 'Belum Selesai' : 'Selesai';
+          logAuditAction('Update Tugas Staf', `Staf mengubah status tugas "${task.title}" menjadi ${task.status}`, app.user);
+          saveDB(currentDb);
+          app.refreshDB();
+          app.addToast('Status tugas diperbarui', 'success');
+        }
+      };
+
+      // ==================== RENDERING SUB-WORKSPACES ====================
+      const renderOperasional = () => {
+        return (
+          <div className="space-y-6 text-left">
+            {/* TABS MENU */}
+            <div className="flex border-b border-zinc-200 gap-4 mb-4">
+              <button onClick={() => setActiveTab('supplies')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'supplies' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Logistik & Perlengkapan</button>
+              <button onClick={() => setActiveTab('scheduler')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'scheduler' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Shift & Jadwal Staf</button>
+              <button onClick={() => setActiveTab('checklist')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'checklist' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Checklist Harian</button>
+            </div>
+
+            {/* TAB: SUPPLIES */}
+            {activeTab === 'supplies' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Tambah Perlengkapan Kantor</h4>
+                  <form onSubmit={handleAddSupply} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Barang</label>
+                      <input type="text" value={supplyName} onChange={e => setSupplyName(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="Kertas thermal, sabun cuci..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Stok Awal</label>
+                        <input type="number" value={supplyStock} onChange={e => setSupplyStock(e.target.value)} required min="0" className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Satuan</label>
+                        <input type="text" value={supplyUnit} onChange={e => setSupplyUnit(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="Roll, Pcs, Box..." />
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Simpan Barang</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Daftar Inventaris Operasional</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Nama Barang</th>
+                          <th className="p-3 text-center">Stok</th>
+                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-center">Update Stok</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {(db.officeSupplies || []).map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-bold text-zinc-700">{item.name}</td>
+                            <td className="p-3 text-center font-mono">{item.stock} {item.unit}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                item.status === 'Cukup' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'Menipis' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
+                              }`}>{item.status}</span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="inline-flex gap-1">
+                                <button onClick={() => handleUpdateSupply(item.id, -1)} className="p-1 bg-zinc-100 hover:bg-zinc-200 rounded text-zinc-650 font-bold">-1</button>
+                                <button onClick={() => handleUpdateSupply(item.id, 1)} className="p-1 bg-zinc-100 hover:bg-zinc-200 rounded text-zinc-650 font-bold">+1</button>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right space-x-1">
+                              {item.status !== 'Cukup' && (
+                                <button onClick={() => handleQuickProcureSupply(item)} className="px-2 py-1 bg-sky-50 text-sky-700 font-bold rounded hover:bg-sky-100" title="Ajukan Pengadaan">Ajukan</button>
+                              )}
+                              <button onClick={() => handleDeleteSupply(item.id)} className="p-1 bg-rose-50 text-rose-600 rounded hover:bg-rose-100"><Icon name="trash-2" size={12} /></button>
+                            </td>
+                          </tr>
+                        ))}
+                        {(db.officeSupplies || []).length === 0 && (
+                          <tr><td colSpan="5" className="text-center p-8 text-zinc-400">Belum ada perlengkapan kantor tercatat.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: SCHEDULER */}
+            {activeTab === 'scheduler' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Penjadwalan Shift Baru</h4>
+                  <form onSubmit={handleAddSchedule} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Pilih Karyawan</label>
+                      <select value={schEmployee} onChange={e => setSchEmployee(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-sm focus:bg-white">
+                        <option value="">-- Pilih Staf --</option>
+                        {staffList.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.roleLabel || s.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Hari</label>
+                        <select value={schDay} onChange={e => setSchDay(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                          <option value="Senin">Senin</option>
+                          <option value="Selasa">Selasa</option>
+                          <option value="Rabu">Rabu</option>
+                          <option value="Kamis">Kamis</option>
+                          <option value="Jumat">Jumat</option>
+                          <option value="Sabtu">Sabtu</option>
+                          <option value="Minggu">Minggu</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Shift</label>
+                        <select value={schShift} onChange={e => setSchShift(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                          <option value="Pagi">Pagi</option>
+                          <option value="Sore">Sore</option>
+                          <option value="Malam">Malam</option>
+                          <option value="Off">Libur (Off)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Catatan Tambahan</label>
+                      <input type="text" value={schNotes} onChange={e => setSchNotes(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-sm focus:bg-white" placeholder="Misal: Standby kasir depan..." />
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Buat Jadwal</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Penjadwalan Shift Mingguan</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Nama Staf</th>
+                          <th className="p-3 text-left">Jabatan</th>
+                          <th className="p-3 text-center">Hari</th>
+                          <th className="p-3 text-center">Shift Kerja</th>
+                          <th className="p-3 text-left">Catatan</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {schedulesList.map(s => (
+                          <tr key={s.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-bold text-zinc-700">{s.employeeName}</td>
+                            <td className="p-3 text-zinc-500 capitalize">{s.employeeRole}</td>
+                            <td className="p-3 text-center font-semibold text-sky-700">{s.day}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                s.shift === 'Pagi' ? 'bg-sky-50 text-sky-700' :
+                                s.shift === 'Sore' ? 'bg-amber-50 text-amber-700' :
+                                s.shift === 'Malam' ? 'bg-indigo-50 text-indigo-700' : 'bg-zinc-100 text-zinc-500'
+                              }`}>{s.shift}</span>
+                            </td>
+                            <td className="p-3 text-zinc-500 italic truncate max-w-[150px]">{s.notes || '-'}</td>
+                            <td className="p-3 text-right">
+                              <button onClick={() => handleDeleteSchedule(s.id)} className="p-1 bg-rose-50 text-rose-600 rounded hover:bg-rose-100"><Icon name="trash-2" size={12} /></button>
+                            </td>
+                          </tr>
+                        ))}
+                        {schedulesList.length === 0 && (
+                          <tr><td colSpan="6" className="text-center p-8 text-zinc-400">Belum ada penjadwalan shift staf.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: CHECKLIST */}
+            {activeTab === 'checklist' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Tambah Pekerjaan Operasional</h4>
+                  <form onSubmit={handleAddTask} className="flex gap-2">
+                    <input type="text" value={taskText} onChange={e => setTaskText(e.target.value)} required className="flex-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-xs" placeholder="Bersihkan etalase, cek modal..." />
+                    <button type="submit" className="px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold text-xs transition flex items-center justify-center"><Icon name="plus" size={14} /></button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Checklist Harian Toko</h4>
+                  <div className="space-y-2">
+                    {tasksList.map(task => (
+                      <div key={task.id} className="flex items-center justify-between p-3 bg-zinc-50 hover:bg-zinc-100/50 rounded-xl border border-zinc-150 transition">
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" checked={task.completed} onChange={() => handleToggleTask(task.id)} className="w-4 h-4 text-sky-600 accent-sky-600 rounded cursor-pointer" />
+                          <span className={`text-xs font-semibold ${task.completed ? 'line-through text-zinc-400' : 'text-zinc-700'}`}>{task.text}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-zinc-400">Oleh: {task.createdBy}</span>
+                          <button onClick={() => handleDeleteTask(task.id)} className="p-1 text-rose-50 hover:bg-rose-100 hover:text-rose-600 rounded transition"><Icon name="trash-2" size={12} /></button>
+                        </div>
+                      </div>
+                    ))}
+                    {tasksList.length === 0 && (
+                      <p className="text-center py-8 text-zinc-400 text-xs">Belum ada tugas operasional.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const renderKeuangan = () => {
+        return (
+          <div className="space-y-6 text-left">
+            <div className="flex border-b border-zinc-200 gap-4 mb-4">
+              <button onClick={() => setActiveTab('invoices')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'invoices' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Invoice Pemasok</button>
+              <button onClick={() => setActiveTab('expenses')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'expenses' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Pengeluaran Manual</button>
+              <button onClick={() => setActiveTab('posverify')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'posverify' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Verifikasi Pembayaran</button>
+            </div>
+
+            {/* TAB: INVOICES */}
+            {activeTab === 'invoices' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Catat Invoice Pemasok</h4>
+                  <form onSubmit={handleAddInvoice} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nomor Invoice</label>
+                      <input type="text" value={invNo} onChange={e => setInvNo(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="INV-2026-001" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Pemasok (Supplier)</label>
+                      <input type="text" value={invSupplier} onChange={e => setInvSupplier(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="PT Sumber Rasa Abadi..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Total Tagihan (Rp)</label>
+                        <input type="number" value={invAmount} onChange={e => setInvAmount(e.target.value)} required min="1" className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Jatuh Tempo</label>
+                        <input type="date" value={invDueDate} onChange={e => setInvDueDate(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" />
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Catat Tagihan</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Invoice Pemasok Terdaftar</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">No Invoice</th>
+                          <th className="p-3 text-left">Pemasok</th>
+                          <th className="p-3 text-right">Nominal</th>
+                          <th className="p-3 text-center">Jatuh Tempo</th>
+                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {invoicesList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-mono font-bold text-sky-750">{item.invNo}</td>
+                            <td className="p-3 font-bold text-zinc-700">{item.supplier}</td>
+                            <td className="p-3 text-right font-bold text-zinc-800">Rp {item.amount.toLocaleString('id-ID')}</td>
+                            <td className="p-3 text-center text-zinc-500">{item.dueDate}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                item.status === 'Lunas' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                              }`}>{item.status}</span>
+                            </td>
+                            <td className="p-3 text-right space-x-1">
+                              {item.status !== 'Lunas' && (
+                                <button onClick={() => handlePayInvoice(item.id)} className="px-2 py-1 bg-emerald-50 text-emerald-700 font-bold rounded hover:bg-emerald-100">Bayar</button>
+                              )}
+                              <button onClick={() => handleDeleteInvoice(item.id)} className="p-1 bg-rose-50 text-rose-600 rounded hover:bg-rose-100"><Icon name="trash-2" size={12} /></button>
+                            </td>
+                          </tr>
+                        ))}
+                        {invoicesList.length === 0 && (
+                          <tr><td colSpan="6" className="text-center p-8 text-zinc-400">Belum ada invoice supplier tercatat.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: EXPENSES */}
+            {activeTab === 'expenses' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Catat Pengeluaran Baru</h4>
+                  <form onSubmit={handleAddExpense} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Kategori Biaya</label>
+                      <select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                        <option value="Listrik & Air">Listrik & Air</option>
+                        <option value="Sewa Tempat">Sewa Tempat</option>
+                        <option value="Gaji & Lembur Staf">Gaji & Lembur Staf</option>
+                        <option value="Logistik & Perlengkapan">Logistik & Perlengkapan</option>
+                        <option value="Pemasok / Supplier">Pemasok / Supplier</option>
+                        <option value="Lain-Lain">Lain-Lain</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Jumlah Pengeluaran (Rp)</label>
+                      <input type="number" value={expAmount} onChange={e => setExpAmount(e.target.value)} required min="1" className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Keterangan Pengeluaran</label>
+                      <textarea value={expDesc} onChange={e => setExpDesc(e.target.value)} required rows={3} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-xs" placeholder="Detail pengeluaran..."></textarea>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Catat Pengeluaran</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Riwayat Pengeluaran Operasional</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Tanggal</th>
+                          <th className="p-3 text-left">Kategori</th>
+                          <th className="p-3 text-left">Keterangan</th>
+                          <th className="p-3 text-right">Nominal</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {expensesList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 text-zinc-500">{item.date}</td>
+                            <td className="p-3"><span className="px-2 py-0.5 rounded font-bold bg-amber-50 text-amber-700">{item.category}</span></td>
+                            <td className="p-3 text-zinc-650 italic truncate max-w-[200px]">{item.description}</td>
+                            <td className="p-3 text-right font-bold text-zinc-800">Rp {item.amount.toLocaleString('id-ID')}</td>
+                            <td className="p-3 text-right">
+                              <button onClick={() => deleteExpense(item.id)} className="p-1 bg-rose-50 text-rose-600 rounded hover:bg-rose-100"><Icon name="trash-2" size={12} /></button>
+                            </td>
+                          </tr>
+                        ))}
+                        {expensesList.length === 0 && (
+                          <tr><td colSpan="5" className="text-center p-8 text-zinc-400">Belum ada riwayat pengeluaran.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: VERIFY */}
+            {activeTab === 'posverify' && (
+              <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                <h4 className="font-bold text-zinc-800 text-sm mb-4">Verifikasi Transaksi Transfer & QRIS POS</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                        <th className="p-3 text-left">ID Transaksi</th>
+                        <th className="p-3 text-left">Metode</th>
+                        <th className="p-3 text-left">Nama Pembeli</th>
+                        <th className="p-3 text-right">Nominal</th>
+                        <th className="p-3 text-center">Waktu Transaksi</th>
+                        <th className="p-3 text-center">Status</th>
+                        <th className="p-3 text-right">Aksi Verifikasi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {verificationsList.map(item => (
+                        <tr key={item.id} className="hover:bg-zinc-50/50">
+                          <td className="p-3 font-mono font-bold text-zinc-500">{item.txId || item.id}</td>
+                          <td className="p-3"><span className="px-2 py-0.5 bg-sky-50 text-sky-700 font-bold rounded uppercase">{item.method}</span></td>
+                          <td className="p-3 font-semibold text-zinc-700">{item.customer || 'Pelanggan Umum'}</td>
+                          <td className="p-3 text-right font-bold text-zinc-800">Rp {item.amount.toLocaleString('id-ID')}</td>
+                          <td className="p-3 text-center text-zinc-400">{new Date(item.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2 py-0.5 rounded font-bold ${
+                              item.status === 'Terverifikasi' ? 'bg-emerald-50 text-emerald-700' :
+                              item.status === 'Ditolak' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700 animate-pulse'
+                            }`}>{item.status}</span>
+                          </td>
+                          <td className="p-3 text-right space-x-1">
+                            {item.status === 'Menunggu' && (
+                              <>
+                                <button onClick={() => handleVerifyPayment(item.id, true)} className="px-2 py-1 bg-emerald-50 text-emerald-700 font-bold rounded hover:bg-emerald-100" title="Verifikasi Lunas">Terima</button>
+                                <button onClick={() => handleVerifyPayment(item.id, false)} className="px-2 py-1 bg-rose-50 text-rose-700 font-bold rounded hover:bg-rose-100" title="Tolak">Tolak</button>
+                              </>
+                            )}
+                            {item.status !== 'Menunggu' && (
+                              <span className="text-[10px] text-zinc-400 font-mono">Verified by {item.verifiedBy}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {verificationsList.length === 0 && (
+                        <tr><td colSpan="7" className="text-center p-8 text-zinc-400">Tidak ada transaksi nontunai menunggu verifikasi.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const renderHR = () => {
+        return (
+          <div className="space-y-6 text-left">
+            <div className="flex border-b border-zinc-200 gap-4 mb-4">
+              <button onClick={() => setActiveTab('attendance')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'attendance' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Absensi Staf</button>
+              <button onClick={() => setActiveTab('leaves')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'leaves' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Pengajuan Cuti</button>
+              <button onClick={() => setActiveTab('payroll')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'payroll' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Kalkulator Slip Gaji</button>
+              <button onClick={() => setActiveTab('recruits')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'recruits' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Rekrutmen Staf</button>
+            </div>
+
+            {/* TAB: ATTENDANCE */}
+            {activeTab === 'attendance' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Koreksi Absensi Manual</h4>
+                  <form onSubmit={handleAddAttendance} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Pilih Karyawan</label>
+                      <select value={attEmployee} onChange={e => setAttEmployee(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-sm focus:bg-white">
+                        <option value="">-- Pilih Staf --</option>
+                        {staffList.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.roleLabel || s.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tanggal</label>
+                        <input type="date" value={attDate} onChange={e => setAttDate(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Status Kehadiran</label>
+                        <select value={attStatus} onChange={e => setAttStatus(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                          <option value="Hadir">Hadir</option>
+                          <option value="Sakit">Sakit</option>
+                          <option value="Izin">Izin / Cuti</option>
+                          <option value="Alfa">Alpa (Tanpa Keterangan)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Simpan Koreksi</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Log Absensi Karyawan</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Karyawan</th>
+                          <th className="p-3 text-center">Tanggal</th>
+                          <th className="p-3 text-center">Status Kehadiran</th>
+                          <th className="p-3 text-right">Diperbarui</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {attendanceList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-bold text-zinc-700">{item.employeeName}</td>
+                            <td className="p-3 text-center text-zinc-650">{item.date}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                item.status === 'Hadir' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'Sakit' ? 'bg-amber-50 text-amber-700' :
+                                item.status === 'Izin' ? 'bg-sky-50 text-sky-700' : 'bg-rose-50 text-rose-700'
+                              }`}>{item.status}</span>
+                            </td>
+                            <td className="p-3 text-right text-zinc-400 font-mono text-[10px]">{formatTimeAgo(item.updatedAt)}</td>
+                          </tr>
+                        ))}
+                        {attendanceList.length === 0 && (
+                          <tr><td colSpan="4" className="text-center p-8 text-zinc-400">Belum ada data kehadiran staf.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: LEAVES */}
+            {activeTab === 'leaves' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Buat Permohonan Cuti Staf</h4>
+                  <form onSubmit={handleAddLeave} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Karyawan</label>
+                      <select value={leaveEmployee} onChange={e => setLeaveEmployee(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-sm focus:bg-white">
+                        <option value="">-- Pilih Staf --</option>
+                        {staffList.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.roleLabel || s.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tanggal Mulai</label>
+                        <input type="date" value={leaveStart} onChange={e => setLeaveStart(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tanggal Selesai</label>
+                        <input type="date" value={leaveEnd} onChange={e => setLeaveEnd(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Alasan Cuti</label>
+                      <input type="text" value={leaveReason} onChange={e => setLeaveReason(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-sm focus:bg-white" placeholder="Alasan mudik, sakit, dll..." />
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Ajukan Cuti</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Pengajuan Cuti Karyawan</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Karyawan</th>
+                          <th className="p-3 text-left">Durasi Cuti</th>
+                          <th className="p-3 text-left">Alasan</th>
+                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {leaveList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-bold text-zinc-700">{item.employeeName}</td>
+                            <td className="p-3 text-zinc-650">{item.start} s/d {item.end}</td>
+                            <td className="p-3 text-zinc-500 italic">{item.reason}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                item.status === 'Disetujui' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'Ditolak' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
+                              }`}>{item.status}</span>
+                            </td>
+                            <td className="p-3 text-right space-x-1">
+                              {item.status === 'Menunggu' && (
+                                <>
+                                  <button onClick={() => handleApproveLeave(item.id, true)} className="px-2 py-1 bg-emerald-50 text-emerald-700 font-bold rounded hover:bg-emerald-100">Setujui</button>
+                                  <button onClick={() => handleApproveLeave(item.id, false)} className="px-2 py-1 bg-rose-50 text-rose-700 font-bold rounded hover:bg-rose-100">Tolak</button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        {leaveList.length === 0 && (
+                          <tr><td colSpan="5" className="text-center p-8 text-zinc-400">Tidak ada pengajuan cuti.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: PAYROLL */}
+            {activeTab === 'payroll' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Kalkulator Gaji & BPJS</h4>
+                  <div className="space-y-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Karyawan</label>
+                      <select value={payEmployee} onChange={e => setPayEmployee(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none text-sm focus:bg-white">
+                        <option value="">-- Pilih Staf --</option>
+                        {staffList.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.roleLabel || s.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Bulan Gaji</label>
+                        <input type="text" value={payMonth} onChange={e => setPayMonth(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="Mei 2026" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Gaji Pokok (Rp)</label>
+                        <input type="number" value={payBase} onChange={e => setPayBase(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="4000000" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Lembur (Jam)</label>
+                        <input type="number" value={payOvertimeHours} onChange={e => setPayOvertimeHours(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tarif Lembur/Jam</label>
+                        <input type="number" value={payOvertimeRate} onChange={e => setPayOvertimeRate(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="20000" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Bonus & Insentif (Rp)</label>
+                      <input type="number" value={payBonus} onChange={e => setPayBonus(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="0" />
+                    </div>
+                    
+                    <div className="bg-zinc-50 border border-zinc-150 rounded-2xl p-4 text-[10px] text-zinc-500 space-y-1">
+                      <p className="font-bold">Potongan BPJS Otomatis:</p>
+                      <p>• BPJS Kesehatan: 1% Gaji Pokok</p>
+                      <p>• BPJS Ketenagakerjaan: 2% Gaji Pokok</p>
+                    </div>
+
+                    <button onClick={handleCalculatePayroll} className="w-full py-2.5 bg-sky-600 text-white rounded-xl font-bold text-xs hover:bg-sky-700 transition shadow-sm">Kalkulasi Gaji</button>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  {slipResult ? (
+                    <div className="border border-sky-100 bg-sky-50/20 rounded-2xl p-6 relative animate-[scaleIn_0.2s]">
+                      <h4 className="font-bold text-sky-900 text-sm border-b border-sky-100 pb-3 uppercase tracking-wide">Slip Gaji Bulanan - Smile POS</h4>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-xs my-4 text-zinc-700">
+                        <div>
+                          <p><span className="font-bold">Karyawan:</span> {slipResult.employeeName}</p>
+                          <p><span className="font-bold">Jabatan:</span> {slipResult.employeeRole}</p>
+                        </div>
+                        <div className="text-right">
+                          <p><span className="font-bold">Periode:</span> {slipResult.month}</p>
+                          <p><span className="font-bold">Tanggal Hitung:</span> {new Date().toLocaleDateString('id-ID')}</p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-dashed border-zinc-250 py-3 space-y-2 text-xs">
+                        <div className="flex justify-between"><span>Gaji Pokok</span><span className="font-semibold text-zinc-800">Rp {slipResult.base.toLocaleString('id-ID')}</span></div>
+                        <div className="flex justify-between"><span>Gaji Lembur</span><span className="font-semibold text-zinc-800">Rp {slipResult.overtimePay.toLocaleString('id-ID')}</span></div>
+                        <div className="flex justify-between"><span>Insentif / Bonus</span><span className="font-semibold text-zinc-800">Rp {slipResult.bonus.toLocaleString('id-ID')}</span></div>
+                        <div className="flex justify-between text-rose-600"><span>Potongan BPJS Kesehatan (1%)</span><span>- Rp {slipResult.bpjsKes.toLocaleString('id-ID')}</span></div>
+                        <div className="flex justify-between text-rose-600"><span>Potongan BPJS Ketenagakerjaan (2%)</span><span>- Rp {slipResult.bpjsKet.toLocaleString('id-ID')}</span></div>
+                      </div>
+
+                      <div className="border-t border-sky-100 pt-3 flex justify-between font-bold text-sm text-sky-950 bg-sky-100/50 p-3 rounded-xl">
+                        <span>GAJI BERSIH (NET)</span>
+                        <span>Rp {slipResult.total.toLocaleString('id-ID')}</span>
+                      </div>
+
+                      <div className="flex gap-2.5 mt-5">
+                        <button onClick={() => setSlipResult(null)} className="flex-1 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold rounded-xl text-xs transition">Batal</button>
+                        <button onClick={handleSavePayroll} className="flex-1 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1"><Icon name="file-check" size={13} />Simpan & Print Slip</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col justify-center items-center py-16 text-zinc-400">
+                      <Icon name="file-text" size={48} className="text-zinc-300 mb-2" />
+                      <p className="text-xs">Pilih karyawan & lakukan kalkulasi gaji untuk mencetak slip bulanan.</p>
+                      
+                      <div className="w-full mt-8 border-t border-zinc-150 pt-5 text-left">
+                        <h5 className="font-bold text-zinc-700 text-xs mb-3">Daftar Slip Gaji Tersimpan</h5>
+                        <div className="overflow-x-auto text-[10px]">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-zinc-50 border-b border-zinc-200 text-zinc-500">
+                                <th className="p-2 text-left">Karyawan</th>
+                                <th className="p-2 text-center">Bulan</th>
+                                <th className="p-2 text-right">Gaji Pokok</th>
+                                <th className="p-2 text-right">Potongan BPJS</th>
+                                <th className="p-2 text-right">Total Bersih</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-100">
+                              {payrollList.map(p => (
+                                <tr key={p.id}>
+                                  <td className="p-2 font-semibold text-zinc-700">{p.employeeName}</td>
+                                  <td className="p-2 text-center text-zinc-500">{p.month}</td>
+                                  <td className="p-2 text-right">Rp {p.base.toLocaleString('id-ID')}</td>
+                                  <td className="p-2 text-right text-rose-600">-Rp {p.deductions.toLocaleString('id-ID')}</td>
+                                  <td className="p-2 text-right font-bold text-zinc-800">Rp {p.total.toLocaleString('id-ID')}</td>
+                                </tr>
+                              ))}
+                              {payrollList.length === 0 && (
+                                <tr><td colSpan="5" className="text-center p-4 text-zinc-400">Belum ada slip gaji yang disimpan.</td></tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB: RECRUITS */}
+            {activeTab === 'recruits' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Form Rekrutmen Pelamar</h4>
+                  <form onSubmit={handleAddRecruit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Lengkap Pelamar</label>
+                      <input type="text" value={recName} onChange={e => setRecName(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="Ketik nama kandidat..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Posisi Dilamar</label>
+                        <select value={recPosition} onChange={e => setRecPosition(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                          <option value="Kasir">Kasir</option>
+                          <option value="Dapur">Staf Dapur</option>
+                          <option value="Kurir">Kurir / Logistik</option>
+                          <option value="Admin">Staf Administrasi</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Kontak (HP)</label>
+                        <input type="text" value={recContact} onChange={e => setRecContact(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="0812..." />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Keterangan / Catatan Resume</label>
+                      <textarea value={recNotes} onChange={e => setRecNotes(e.target.value)} rows={3} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-xs" placeholder="Pengalaman kasir 2 tahun, domisili dekat toko..."></textarea>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Daftarkan Kandidat</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Pipeline Rekrutmen (Pelamar Kerja)</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Kandidat</th>
+                          <th className="p-3 text-left">Kontak</th>
+                          <th className="p-3 text-left">Catatan</th>
+                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-right">Aksi Tahapan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {recruitsList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-bold text-zinc-700">{item.name}</td>
+                            <td className="p-3 text-zinc-500 font-mono">{item.phone}</td>
+                            <td className="p-3 text-zinc-650 max-w-[180px] truncate" title={item.notes}>{item.notes}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                item.status === 'Diterima' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'Interview' ? 'bg-sky-50 text-sky-700' :
+                                item.status === 'Ditolak' ? 'bg-rose-50 text-rose-700' : 'bg-zinc-100 text-zinc-600'
+                              }`}>{item.status}</span>
+                            </td>
+                            <td className="p-3 text-right space-x-1 whitespace-nowrap">
+                              <select value={item.status} onChange={e => handleUpdateRecruit(item.id, e.target.value)} className="bg-zinc-50 border border-zinc-200 rounded p-1 text-[10px] focus:bg-white font-semibold">
+                                <option value="Seleksi Berkas">Berkas</option>
+                                <option value="Interview">Wawancara</option>
+                                <option value="Diterima">Diterima</option>
+                                <option value="Ditolak">Ditolak</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                        {recruitsList.length === 0 && (
+                          <tr><td colSpan="5" className="text-center p-8 text-zinc-400">Tidak ada pelamar terdaftar.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const renderMarketing = () => {
+        return (
+          <div className="space-y-6 text-left">
+            <div className="flex border-b border-zinc-200 gap-4 mb-4">
+              <button onClick={() => setActiveTab('coupons')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'coupons' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Kupon Diskon POS</button>
+              <button onClick={() => setActiveTab('crm')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'crm' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>CRM & Prospek Pelanggan</button>
+            </div>
+
+            {/* TAB: COUPONS */}
+            {activeTab === 'coupons' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Buat Voucher Kupon Promo</h4>
+                  <form onSubmit={handleAddCoupon} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Kode Voucher (Kapital)</label>
+                      <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm font-semibold uppercase" placeholder="SMILEHEBOH, DISKON10" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tipe Diskon</label>
+                        <select value={promoType} onChange={e => setPromoType(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                          <option value="nominal">Nominal (Rupiah)</option>
+                          <option value="percent">Persentase (%)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nilai Voucher</label>
+                        <input type="number" value={promoValue} onChange={e => setPromoValue(e.target.value)} required min="1" className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white" placeholder="10000 atau 10" />
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Buat Voucher</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Voucher Promo Aktif (POS Kasir)</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Kode Kupon</th>
+                          <th className="p-3 text-left">Jenis Diskon</th>
+                          <th className="p-3 text-right">Nilai Potongan</th>
+                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-right">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {couponsList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-mono font-bold text-sky-750 text-sm">{item.code}</td>
+                            <td className="p-3 text-zinc-650 capitalize">{item.type === 'percent' ? 'Persentase (%)' : 'Nominal Potongan'}</td>
+                            <td className="p-3 text-right font-bold text-zinc-800">
+                              {item.type === 'percent' ? `${item.value}%` : `Rp ${item.value.toLocaleString('id-ID')}`}
+                            </td>
+                            <td className="p-3 text-center">
+                              <button onClick={() => handleToggleCoupon(item.id)} className={`px-2 py-0.5 rounded font-bold ${
+                                item.active ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-150 text-zinc-500'
+                              }`}>{item.active ? 'Aktif' : 'Nonaktif'}</button>
+                            </td>
+                            <td className="p-3 text-right">
+                              <button onClick={() => deleteCoupon(item.id)} className="p-1 bg-rose-50 text-rose-600 rounded hover:bg-rose-100"><Icon name="trash-2" size={12} /></button>
+                            </td>
+                          </tr>
+                        ))}
+                        {couponsList.length === 0 && (
+                          <tr><td colSpan="5" className="text-center p-8 text-zinc-400">Belum ada kupon voucher dibuat.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: CRM */}
+            {activeTab === 'crm' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Input Prospek Baru (CRM)</h4>
+                  <form onSubmit={handleAddLead} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nama Prospek</label>
+                      <input type="text" value={leadName} onChange={e => setLeadName(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-sm" placeholder="Nama pelanggan/perusahaan..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Nomor WA/HP</label>
+                        <input type="text" value={leadPhone} onChange={e => setLeadPhone(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="08..." />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Status Prospek</label>
+                        <select value={leadStatus} onChange={e => setLeadStatus(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                          <option value="Prospek Baru">Prospek Baru</option>
+                          <option value="Negosiasi">Negosiasi</option>
+                          <option value="Hubungi Kembali">Hubungi Kembali</option>
+                          <option value="Deal">Deal (Selesai)</option>
+                          <option value="Batal">Batal</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Histori Diskusi / Feedback</label>
+                      <textarea value={leadNotes} onChange={e => setLeadNotes(e.target.value)} required rows={3} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-xs" placeholder="Ingin pesan nasi kotak 100 pax untuk minggu depan..."></textarea>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Simpan Prospek</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Daftar Kontak Prospek Pelanggan (CRM)</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Nama Prospek</th>
+                          <th className="p-3 text-left">Kontak WA</th>
+                          <th className="p-3 text-left">Histori / Feedback</th>
+                          <th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-right">Ubah Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {leadsList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-bold text-zinc-700">{item.name}</td>
+                            <td className="p-3 text-zinc-500 font-mono">{item.phone}</td>
+                            <td className="p-3 text-zinc-650 max-w-[200px] truncate" title={item.notes}>{item.notes}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                item.status === 'Deal' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'Negosiasi' ? 'bg-sky-50 text-sky-700' :
+                                item.status === 'Batal' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'
+                              }`}>{item.status}</span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <select value={item.status} onChange={e => updateLeadStatus(item.id, e.target.value)} className="bg-zinc-50 border border-zinc-200 rounded p-1 text-[10px] focus:bg-white font-semibold">
+                                <option value="Prospek Baru">Prospek</option>
+                                <option value="Negosiasi">Nego</option>
+                                <option value="Hubungi Kembali">Recall</option>
+                                <option value="Deal">Deal</option>
+                                <option value="Batal">Batal</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                        {leadsList.length === 0 && (
+                          <tr><td colSpan="5" className="text-center p-8 text-zinc-400">Belum ada data prospek pelanggan CRM.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const renderGudang = () => {
+        const ledgerList = (db.stockLedger || []).sort((a, b) => new Date(b.date) - new Date(a.date));
+        return (
+          <div className="space-y-6 text-left">
+            <div className="flex border-b border-zinc-200 gap-4 mb-4">
+              <button onClick={() => setActiveTab('opname')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'opname' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Stock Opname</button>
+              <button onClick={() => setActiveTab('ledger')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'ledger' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-sky-600'}`}>Mutasi Kartu Stok</button>
+              <button onClick={() => setActiveTab('damaged')} className={`pb-2.5 font-bold text-sm transition ${activeTab === 'damaged' ? 'border-b-2 border-sky-600 text-sky-600' : 'text-zinc-400'}`}>Pencatatan Barang Rusak</button>
+            </div>
+
+            {/* TAB: OPNAME */}
+            {activeTab === 'opname' && (
+              <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                <h4 className="font-bold text-zinc-800 text-sm mb-4">Pencocokan Stok Fisik (Stock Opname)</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                        <th className="p-3 text-left">SKU</th>
+                        <th className="p-3 text-left">Nama Produk</th>
+                        <th className="p-3 text-center">Stok Sistem</th>
+                        <th className="p-3 text-center">Stok Fisik Nyata</th>
+                        <th className="p-3 text-center">Selisih</th>
+                        <th className="p-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {db.products.filter(p => p.active !== false).map(p => {
+                        const inputVal = physicalQty[p.id] || '';
+                        const sysStock = p.stock || 0;
+                        const parsedInput = inputVal !== '' ? parseFloat(inputVal) : sysStock;
+                        const diff = parsedInput - sysStock;
+                        return (
+                          <tr key={p.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 font-mono font-semibold text-zinc-550">{p.sku}</td>
+                            <td className="p-3 font-bold text-zinc-700">{p.name}</td>
+                            <td className="p-3 text-center font-mono font-bold text-zinc-650">{sysStock} pcs</td>
+                            <td className="p-3 text-center">
+                              <input 
+                                type="number" 
+                                value={inputVal} 
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setPhysicalQty(prev => ({ ...prev, [p.id]: val }));
+                                }} 
+                                placeholder={sysStock}
+                                className="w-20 px-2 py-1 bg-zinc-50 border border-zinc-200 rounded font-mono text-center text-xs outline-none focus:bg-white focus:border-sky-500" 
+                              />
+                            </td>
+                            <td className="p-3 text-center font-mono font-bold">
+                              {inputVal !== '' ? (
+                                <span className={diff === 0 ? 'text-zinc-500' : (diff > 0 ? 'text-emerald-600' : 'text-rose-600')}>
+                                  {diff > 0 ? `+${diff}` : diff}
+                                </span>
+                              ) : <span className="text-zinc-300">-</span>}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button 
+                                onClick={() => handleStockOpnameAdjust(p.id, sysStock)}
+                                disabled={inputVal === ''}
+                                className={`px-2.5 py-1.5 font-bold rounded text-[10px] transition ${
+                                  inputVal !== '' ? 'bg-sky-600 hover:bg-sky-700 text-white cursor-pointer' : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
+                                }`}
+                              >
+                                Sesuaikan
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: LEDGER */}
+            {activeTab === 'ledger' && (
+              <div className="bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                <h4 className="font-bold text-zinc-800 text-sm mb-4">Mutasi Kartu Stok Barang Ritel</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                        <th className="p-3 text-left">Waktu Log</th>
+                        <th className="p-3 text-left">SKU</th>
+                        <th className="p-3 text-left">Nama Produk</th>
+                        <th className="p-3 text-left">Tipe Mutasi</th>
+                        <th className="p-3 text-center">Jumlah</th>
+                        <th className="p-3 text-left">Detail Alasan / Catatan</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {ledgerList.map(item => (
+                        <tr key={item.id} className="hover:bg-zinc-50/50">
+                          <td className="p-3 text-zinc-450 font-mono text-[10px]">{new Date(item.date).toLocaleString('id-ID')}</td>
+                          <td className="p-3 font-mono font-semibold text-zinc-500">{item.sku || '-'}</td>
+                          <td className="p-3 font-bold text-zinc-700">{item.productName}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded font-bold uppercase text-[9px] ${
+                              item.type.includes('Opname') ? 'bg-amber-50 text-amber-700' :
+                              item.type.includes('Rusak') ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+                            }`}>{item.type}</span>
+                          </td>
+                          <td className="p-3 text-center font-mono font-bold">
+                            <span className={item.qty > 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                              {item.qty > 0 ? `+${item.qty}` : item.qty} pcs
+                            </span>
+                          </td>
+                          <td className="p-3 text-zinc-500 italic font-mono">{item.notes}</td>
+                        </tr>
+                      ))}
+                      {ledgerList.length === 0 && (
+                        <tr><td colSpan="6" className="text-center p-8 text-zinc-400">Belum ada riwayat mutasi stok.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: DAMAGED */}
+            {activeTab === 'damaged' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-zinc-200 p-5 h-fit shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Catat Barang Rusak/Kedaluwarsa</h4>
+                  <form onSubmit={handleAddDamaged} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Pilih Produk</label>
+                      <select value={dmgProduct} onChange={e => setDmgProduct(e.target.value)} required className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                        <option value="">-- Pilih Produk --</option>
+                        {db.products.filter(p => p.active !== false).map(p => (
+                          <option key={p.id} value={p.id}>{p.name} (Stok: {p.stock})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Jumlah Rusak (Qty)</label>
+                        <input type="number" value={dmgQty} onChange={e => setDmgQty(e.target.value)} required min="1" step="any" className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-1">Tindakan</label>
+                        <select value={dmgAction} onChange={e => setDmgAction(e.target.value)} className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white">
+                          <option value="Dibuang">Dibuang / Dimusnahkan</option>
+                          <option value="Diretur">Diretur ke Supplier</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-xs hover:bg-zinc-800 transition">Catat Barang Rusak</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-200 p-5 shadow-sm">
+                  <h4 className="font-bold text-zinc-800 text-sm mb-4">Log Barang Rusak & Kerugian HPP</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-50 text-zinc-500 border-b border-zinc-200">
+                          <th className="p-3 text-left">Tanggal</th>
+                          <th className="p-3 text-left">Nama Produk</th>
+                          <th className="p-3 text-center">Jumlah Rusak</th>
+                          <th className="p-3 text-right">Taksiran Rugi HPP</th>
+                          <th className="p-3 text-left">Tindakan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {damagedList.map(item => (
+                          <tr key={item.id} className="hover:bg-zinc-50/50">
+                            <td className="p-3 text-zinc-500">{item.date}</td>
+                            <td className="p-3 font-bold text-zinc-700">{item.productName}</td>
+                            <td className="p-3 text-center font-mono font-bold text-rose-600">{item.qty} pcs</td>
+                            <td className="p-3 text-right font-bold text-zinc-800">Rp {item.lossValue?.toLocaleString('id-ID')}</td>
+                            <td className="p-3"><span className="px-2 py-0.5 rounded font-bold bg-zinc-100 text-zinc-700">{item.action}</span></td>
+                          </tr>
+                        ))}
+                        {damagedList.length === 0 && (
+                          <tr><td colSpan="5" className="text-center p-8 text-zinc-400">Belum ada catatan barang rusak.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      return (
+        <div className="pb-24 md:pb-8">
+          {/* OWNER FEEDBACK BANNER */}
+          {renderFeedbackNotifications()}
+
+          {/* MAIN WORKSPACE HEADER */}
+          <div className="bg-gradient-to-r from-zinc-900 to-zinc-800 rounded-3xl p-6 text-white mb-6 shadow-md border border-zinc-850 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-left">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-lg bg-sky-500 text-white font-bold text-[10px] uppercase">
+                  Workspace
+                </span>
+                <span className="text-xs text-zinc-400">• Logged as {app.user?.roleLabel || 'Karyawan'}</span>
+              </div>
+              <h2 className="text-xl font-bold mt-1.5">{app.user?.roleLabel || 'Workspace Karyawan'}</h2>
+              <p className="text-xs text-zinc-400 mt-1">Akses eksklusif pengelolaan data internal Smile POS divisi administrasi.</p>
+            </div>
+            
+            <div className="flex items-center gap-3 bg-zinc-700/40 p-3 rounded-2xl border border-zinc-650 backdrop-blur-sm">
+              <div className="w-10 h-10 bg-sky-600 text-white font-bold rounded-xl flex items-center justify-center text-sm shadow-inner uppercase">
+                {app.user?.name?.substring(0,2)}
+              </div>
+              <div>
+                <p className="text-xs font-bold">{app.user?.name}</p>
+                <p className="text-[10px] text-zinc-400 font-mono">{app.user?.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* DYNAMIC SUB-WORKSPACE PAGE */}
+          {roleId === 'admin_operasional' && renderOperasional()}
+          {roleId === 'admin_keuangan' && renderKeuangan()}
+          {roleId === 'admin_hr' && renderHR()}
+          {roleId === 'admin_marketing' && renderMarketing()}
+          {roleId === 'admin_gudang' && renderGudang()}
+          {roleId === 'keuangan' && renderKeuanganWorkspace()}
+          {roleId === 'manager' && renderManagerWorkspace()}
+          {roleId === 'supervisor' && renderSupervisorWorkspace()}
+          {roleId === 'staff' && renderStaffWorkspace()}
+        </div>
+      );
+    }
+
     function Sidebar() {
       const app = useContext(AppContext);
       const { user, page, sidebar } = app;
@@ -6611,6 +8660,14 @@
       const menuItems = [];
       if (user?.role === 'owner') {
         menuItems.push({ id: 'owner_dashboard', icon: 'layout-dashboard', label: 'Dashboard Owner' });
+      }
+      if (['admin_operasional', 'admin_keuangan', 'admin_hr', 'admin_marketing', 'admin_gudang', 'keuangan', 'manager', 'supervisor', 'staff'].includes(user?.roleId)) {
+        let label = 'Workspace Admin';
+        if (user?.roleId === 'keuangan') label = 'Workspace Keuangan';
+        else if (user?.roleId === 'manager') label = 'Workspace Manajer';
+        else if (user?.roleId === 'supervisor') label = 'Workspace Supervisor';
+        else if (user?.roleId === 'staff') label = 'Workspace Staf';
+        menuItems.push({ id: 'admin_workspace', icon: 'briefcase', label: label });
       }
       menuItems.push({ id: 'pos', icon: 'shopping-cart', label: 'Kasir POS' });
       if (['admin', 'owner', 'keuangan', 'manager'].includes(user?.role)) {
@@ -6694,6 +8751,9 @@
       if (app.user?.role === 'owner') {
         menuItems.push({ id: 'owner_dashboard', icon: 'layout-dashboard', label: 'Dashboard' });
       }
+      if (['admin_operasional', 'admin_keuangan', 'admin_hr', 'admin_marketing', 'admin_gudang', 'keuangan', 'manager', 'supervisor', 'staff'].includes(app.user?.roleId)) {
+        menuItems.push({ id: 'admin_workspace', icon: 'briefcase', label: 'Workspace' });
+      }
       menuItems.push({ id: 'pos', icon: 'shopping-cart', label: 'POS' });
       if (['admin', 'owner', 'keuangan', 'manager'].includes(app.user?.role)) {
         menuItems.push({ id: 'products', icon: 'package', label: 'Produk' });
@@ -6722,7 +8782,7 @@
       const app = useContext(AppContext);
       const [showNotif, setShowNotif] = useState(false);
       const [now, setNow] = useState(new Date());
-      const titles = { owner_dashboard: 'Dashboard Owner', pos: 'Point of Sale', products: 'Produk', reports: 'Laporan', users: 'Pengguna', purchases: 'Manajemen Pengadaan' };
+      const titles = { owner_dashboard: 'Dashboard Owner', admin_workspace: 'Workspace Admin', pos: 'Point of Sale', products: 'Produk', reports: 'Laporan', users: 'Pengguna', purchases: 'Manajemen Pengadaan' };
       
       const lowStockItems = useMemo(() => {
         return getDB().products.filter(p => p.active !== false && p.stock <= (p.minStock || 5));
@@ -7216,6 +9276,7 @@
                 <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll">
                   <div className="max-w-7xl mx-auto h-full">
                     {appState.page === 'owner_dashboard' && <OwnerDashboard />}
+                    {appState.page === 'admin_workspace' && <AdminWorkspace />}
                     {appState.page === 'pos' && (!['admin', 'owner'].includes(appState.user?.role) ? (appState.activeShift ? <POSPage /> : <BukaShiftPage />) : <POSPage />)}
                     {appState.page === 'products' && <ProductsPage />}
                     {appState.page === 'reports' && <ReportsPage />}

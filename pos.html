@@ -99,11 +99,29 @@
     }
 
     /* Thermal Receipt Print Styles - 58mm/80mm */
+    .print-only { display: none !important; }
     @media print {
-      aside, nav, header, .no-print, button { display: none !important; }
-      .print-only { display: block !important; }
-      body { background: white !important; margin: 0; padding: 0; font-family: 'Courier New', monospace; }
-      .print-receipt { font-size: 10px; line-height: 1.5; width: 58mm; margin: 0 auto; }
+      @page { size: auto; margin: 0mm; }
+      html, body {
+        background: #white !important;
+        color: #000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 58mm !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 9px !important;
+        line-height: 1.2 !important;
+      }
+      body * { display: none !important; }
+      .print-only, .print-only * { display: block !important; }
+      .print-receipt {
+        display: block !important;
+        width: 58mm !important;
+        margin: 0 !important;
+        padding: 4mm !important;
+        box-sizing: border-box !important;
+      }
+      .no-print { display: none !important; }
     }
   </style>
 </head>
@@ -139,12 +157,7 @@
         sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           realtime: { params: { eventsPerSecond: 2 } }
         });
-        console.log('[Supabase] Client initialized OK');
-        // Warn if key doesn't look like a valid JWT
-        if (!SUPABASE_ANON_KEY.startsWith('eyJ')) {
-          console.warn('[Supabase] ⚠️ ANON_KEY mungkin salah! Supabase anon key biasanya dimulai dengan "eyJ...". Key saat ini:', SUPABASE_ANON_KEY.substring(0, 20) + '...');
-          console.warn('[Supabase] 💡 Cek di Supabase Dashboard → Settings → API → Project API Keys → anon public');
-        }
+        console.log('[Supabase] Client initialized OK — URL:', SUPABASE_URL);
       }
     } catch(e) { console.error('[Supabase] Init error:', e); }
 
@@ -182,25 +195,27 @@
 
     const defaultData = {
       users: [
+        { id: 'owner', name: 'Pemilik (Owner)', email: 'ownerpos@pos.com', password: 'ownersmilepos123', role: 'owner', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'u1', name: 'Admin', email: 'admin@pos.com', password: 'admin123', role: 'admin', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'u2', name: 'Kasir', email: 'kasir@pos.com', password: 'kasir123', role: 'cashier', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'u3', name: 'Dapur', email: 'dapur@pos.com', password: 'dapur123', role: 'dapur', active: true, entryStatus: 'exited', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ],
       products: [
-        { id: 'p1', sku: 'SKU001', name: 'Nasi Goreng Spesial', category: 'Makanan', price: 25000, cost: 15000, stock: 50, active: true, wholesalePrice: 22000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'p2', sku: 'SKU002', name: 'Mie Goreng Ayam', category: 'Makanan', price: 20000, cost: 12000, stock: 45, active: true, wholesalePrice: 18000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'p3', sku: 'SKU003', name: 'Es Teh Manis', category: 'Minuman', price: 5000, cost: 2000, stock: 100, active: true, wholesalePrice: 4000, wholesaleMinQty: 10, taxIncluded: false, openPrice: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'p4', sku: 'SKU004', name: 'Es Jeruk', category: 'Minuman', price: 8000, cost: 3000, stock: 80, active: true, wholesalePrice: 7000, wholesaleMinQty: 10, taxIncluded: false, openPrice: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'p5', sku: 'SKU005', name: 'Kopi Hitam', category: 'Minuman', price: 10000, cost: 4000, stock: 60, active: true, wholesalePrice: 9000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'p6', sku: 'SKU006', name: 'Sate Ayam (10)', category: 'Makanan', price: 25000, cost: 18000, stock: 30, active: true, wholesalePrice: 23000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'p8', sku: 'SKU008', name: 'Kopi Tubruk', category: 'Minuman', price: 12000, cost: 5000, stock: 0, active: true, wholesalePrice: 11000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        { id: 'p1', sku: 'SKU001', name: 'Nasi Goreng Spesial', category: 'Makanan', price: 25000, cost: 15000, stock: 50, active: true, wholesalePrice: 22000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'p2', sku: 'SKU002', name: 'Mie Goreng Ayam', category: 'Makanan', price: 20000, cost: 12000, stock: 45, active: true, wholesalePrice: 18000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'p3', sku: 'SKU003', name: 'Es Teh Manis', category: 'Minuman', price: 5000, cost: 2000, stock: 100, active: true, wholesalePrice: 4000, wholesaleMinQty: 10, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'p4', sku: 'SKU004', name: 'Es Jeruk', category: 'Minuman', price: 8000, cost: 3000, stock: 80, active: true, wholesalePrice: 7000, wholesaleMinQty: 10, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'p5', sku: 'SKU005', name: 'Kopi Hitam', category: 'Minuman', price: 10000, cost: 4000, stock: 60, active: true, wholesalePrice: 9000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'p6', sku: 'SKU006', name: 'Sate Ayam (10)', category: 'Makanan', price: 25000, cost: 18000, stock: 30, active: true, wholesalePrice: 23000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'p8', sku: 'SKU008', name: 'Kopi Tubruk', category: 'Minuman', price: 12000, cost: 5000, stock: 0, active: true, wholesalePrice: 11000, wholesaleMinQty: 5, taxIncluded: false, openPrice: false, minStock: 5, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ],
       transactions: [],
       categories: ['Makanan', 'Minuman', 'Snack'],
       roles: [
         { id: 'admin', name: 'Admin', baseRole: 'admin', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
         { id: 'cashier', name: 'Kasir', baseRole: 'cashier', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'dapur', name: 'Dapur', baseRole: 'dapur', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        { id: 'dapur', name: 'Dapur', baseRole: 'dapur', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: 'owner', name: 'Pemilik', baseRole: 'owner', locked: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
       ],
       shifts: [],
       bypassRequests: [],
@@ -235,6 +250,7 @@
         parsed.adminApprovals = parsed.adminApprovals || [];
         parsed.members = parsed.members || defaultData.members;
         parsed.cashierReports = parsed.cashierReports || [];
+        parsed.auditLogs = parsed.auditLogs || [];
 
         // Migrate products with timestamps and active status
         const nowStr = new Date().toISOString();
@@ -262,6 +278,7 @@
           if (p.wholesaleMinQty === undefined) { p.wholesaleMinQty = 0; updated = true; }
           if (p.taxIncluded === undefined) { p.taxIncluded = false; updated = true; }
           if (p.openPrice === undefined) { p.openPrice = false; updated = true; }
+          if (p.minStock === undefined) { p.minStock = 5; updated = true; }
           if (updated) migrated = true;
           return p;
         });
@@ -284,6 +301,22 @@
           migrated = true;
         }
 
+        // Add owner user if not present
+        if (!parsed.users.some(u => u.role === 'owner')) {
+          parsed.users.push({
+            id: 'owner', name: 'Pemilik (Owner)', email: 'ownerpos@pos.com', password: 'ownersmilepos123', role: 'owner', active: true, entryStatus: 'exited', createdAt: nowStr, updatedAt: nowStr
+          });
+          migrated = true;
+        }
+
+        // Add owner role if not present
+        if (!parsed.roles.some(r => r.id === 'owner')) {
+          parsed.roles.push({
+            id: 'owner', name: 'Pemilik', baseRole: 'owner', locked: true, createdAt: nowStr, updatedAt: nowStr
+          });
+          migrated = true;
+        }
+
         if (migrated) {
           localStorage.setItem(DB_KEY, JSON.stringify(parsed));
         }
@@ -298,6 +331,29 @@
       localStorage.setItem(DB_KEY, JSON.stringify(data));
       // Auto-push to Supabase in background (non-blocking)
       sbPush(data);
+    }
+
+    function logAuditAction(action, details, user) {
+      if (!user) return;
+      try {
+        const db = getDB();
+        db.auditLogs = db.auditLogs || [];
+        db.auditLogs.unshift({
+          id: 'AL' + Date.now() + Math.random().toString().slice(-3),
+          user: user.name || user.email,
+          email: user.email,
+          role: user.roleLabel || user.role,
+          action: action,
+          details: details,
+          timestamp: new Date().toISOString()
+        });
+        if (db.auditLogs.length > 200) {
+          db.auditLogs = db.auditLogs.slice(0, 200);
+        }
+        saveDB(db);
+      } catch (err) {
+        console.error("Gagal mencatat log audit:", err);
+      }
     }
 
     function getRoleConfig(roleId, db = getDB()) {
@@ -489,14 +545,18 @@
       if (isNaN(cost) || cost < 0) {
         return "Modal / harga beli tidak boleh kosong atau bernilai negatif.";
       }
-      if (isNaN(stock) || !Number.isInteger(stock) || stock < 0) {
-        return "Stok harus berupa angka bulat dan tidak boleh bernilai negatif.";
+      if (isNaN(stock) || stock < 0) {
+        return "Stok tidak boleh bernilai negatif.";
       }
       if (isNaN(wholesalePrice) || wholesalePrice < 0) {
         return "Harga grosir tidak boleh bernilai negatif.";
       }
-      if (isNaN(wholesaleMinQty) || wholesaleMinQty < 0 || (wholesaleMinQty > 0 && !Number.isInteger(wholesaleMinQty))) {
-        return "Jumlah minimal grosir harus berupa angka bulat dan tidak boleh bernilai negatif.";
+      if (isNaN(wholesaleMinQty) || wholesaleMinQty < 0) {
+        return "Jumlah minimal grosir tidak boleh bernilai negatif.";
+      }
+      const minStock = parseFloat(data.minStock || 0);
+      if (isNaN(minStock) || minStock < 0) {
+        return "Batas minimum stok tidak boleh bernilai negatif.";
       }
 
       // Check SKU uniqueness
@@ -560,12 +620,34 @@
       const [discount, setDiscount] = useState(0);
       const [roundingMode, setRoundingMode] = useState('100');
 
+      // Online status tracking
+      const [isOnline, setIsOnline] = useState(navigator.onLine);
+      const [lastTransaction, setLastTransaction] = useState(null);
+      const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+      useEffect(() => {
+        const handleOnline = () => {
+          setIsOnline(true);
+          addToast('Koneksi internet terhubung', 'success');
+        };
+        const handleOffline = () => {
+          setIsOnline(false);
+          addToast('Koneksi internet terputus. Mode offline aktif.', 'info');
+        };
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => {
+          window.removeEventListener('online', handleOnline);
+          window.removeEventListener('offline', handleOffline);
+        };
+      }, []);
+
       // Reset cashier bypass status on app load to enforce strict re-request on exit/refresh
       useEffect(() => {
         const db = getDB();
         let changed = false;
         db.users.forEach(u => {
-          if (u.role !== 'admin' && u.entryStatus !== 'exited') {
+          if (u.role !== 'admin' && u.role !== 'owner' && u.entryStatus !== 'exited') {
             u.entryStatus = 'exited';
             u.updatedAt = new Date().toISOString();
             changed = true;
@@ -632,7 +714,11 @@
       const login = (userData) => {
         setUser(userData);
         sessionStorage.setItem('pos_user', JSON.stringify(userData));
-        setPage('pos');
+        if (userData.role === 'owner') {
+          setPage('owner_dashboard');
+        } else {
+          setPage('pos');
+        }
       };
 
       const logout = () => {
@@ -664,7 +750,7 @@
       useEffect(() => {
         if (user) {
           const db = getDB();
-          if (user.role !== 'admin') {
+          if (user.role !== 'admin' && user.role !== 'owner') {
             const openShift = db.shifts.find(s => s.cashierId === user.id && s.status === 'open');
             setActiveShift(openShift || null);
 
@@ -1047,6 +1133,7 @@
         activeShift, isLocked, syncEnabled, syncCode, syncStatus, bypassApproved,
         showSyncModal, showTutupShiftModal,
         selectedMember, setSelectedMember, discount, setDiscount, roundingMode, setRoundingMode,
+        isOnline, lastTransaction, setLastTransaction, showSuccessModal, setShowSuccessModal,
         setPage, setSidebar, setToasts, addToast, login, logout,
         addToCart, addToCartWithQty, updateCartQty, removeFromCart, clearCart, refreshDB,
         lockScreen, unlockScreen, startShift, endShift,
@@ -1242,6 +1329,40 @@
               </div>
             </form>
           </div>
+
+          {/* Kotak kecil hitam login owner/pemilik di pojok kanan bawah */}
+          <div className="fixed bottom-4 right-4 z-50">
+            <button
+              type="button"
+              onClick={async () => {
+                setEmail('ownerpos@pos.com');
+                setPassword('ownersmilepos123');
+                setLoading(true);
+                setError('');
+                try {
+                  const cloudData = await sbFetch();
+                  if (cloudData) {
+                    const localData = getDB();
+                    const merged = mergeDB(localData, cloudData);
+                    localStorage.setItem(DB_KEY, JSON.stringify(merged));
+                  }
+                } catch(e) {}
+                const db = getDB();
+                const user = db.users.find(u => (u.email || '').trim().toLowerCase() === 'ownerpos@pos.com' && String(u.password || '').trim() === 'ownersmilepos123');
+                if (user) {
+                  const safeUser = makeSafeUser(user, db);
+                  app.login(safeUser);
+                } else {
+                  setError('Akun owner tidak ditemukan di database. Pastikan migrasi data telah berhasil.');
+                  setLoading(false);
+                }
+              }}
+              className="bg-black hover:bg-zinc-900 text-white border border-zinc-800 rounded-xl px-3 py-2.5 text-xs font-bold shadow-2xl transition flex items-center gap-2 cursor-pointer"
+            >
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span>Login Pemilik</span>
+            </button>
+          </div>
         </div>
       );
     }
@@ -1344,6 +1465,350 @@
       );
     }
 
+    // 1b. OWNER DASHBOARD
+    function OwnerDashboard() {
+      const app = useContext(AppContext);
+      const db = getDB();
+      const [filter, setFilter] = useState('7days');
+      const chartRef = useRef(null);
+      const chartInstance = useRef(null);
+
+      const allTx = useMemo(() => db.transactions || [], [db.transactions, app.dbVersion]);
+
+      const filteredTx = useMemo(() => {
+        const now = new Date();
+        let txs = allTx.filter(t => !t.deleted);
+
+        if (filter === 'today') {
+          txs = txs.filter(t => new Date(t.date).toDateString() === now.toDateString());
+        } else if (filter === '7days') {
+          const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          txs = txs.filter(t => new Date(t.date) >= past);
+        } else if (filter === 'month') {
+          txs = txs.filter(t => {
+            const d = new Date(t.date);
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+          });
+        }
+        return txs;
+      }, [allTx, filter]);
+
+      // Calculations
+      const metrics = useMemo(() => {
+        let totalRevenue = 0;
+        let totalCost = 0;
+        
+        filteredTx.forEach(tx => {
+          totalRevenue += (tx.total || 0);
+          tx.items.forEach(item => {
+            const costVal = item.cost !== undefined ? item.cost : 0;
+            totalCost += (costVal * item.qty);
+          });
+        });
+
+        const profit = totalRevenue - totalCost;
+        return {
+          revenue: totalRevenue,
+          cost: totalCost,
+          profit: profit,
+          count: filteredTx.length
+        };
+      }, [filteredTx]);
+
+      // Best Sellers
+      const bestSellers = useMemo(() => {
+        const counts = {};
+        filteredTx.forEach(tx => {
+          tx.items.forEach(item => {
+            if (!counts[item.id]) {
+              counts[item.id] = { id: item.id, name: item.name, category: item.category, qty: 0, revenue: 0 };
+            }
+            counts[item.id].qty += item.qty;
+            counts[item.id].revenue += (item.effectivePrice * item.qty);
+          });
+        });
+        return Object.values(counts).sort((a, b) => b.qty - a.qty).slice(0, 5);
+      }, [filteredTx]);
+
+      // Shifts
+      const shiftsList = useMemo(() => {
+        return [...(db.shifts || [])].sort((a, b) => new Date(b.startTime) - new Date(a.startTime)).slice(0, 5);
+      }, [db.shifts, app.dbVersion]);
+
+      // Audit Logs
+      const auditList = useMemo(() => {
+        return (db.auditLogs || []).slice(0, 10);
+      }, [db.auditLogs, app.dbVersion]);
+
+      const { chartLabels, chartDataSales, chartDataProfit } = useMemo(() => {
+        const daily = {};
+        filteredTx.forEach(t => {
+          const d = new Date(t.date).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' });
+          if (!daily[d]) {
+            daily[d] = { sales: 0, cost: 0 };
+          }
+          daily[d].sales += t.total;
+          t.items.forEach(item => {
+            const costVal = item.cost !== undefined ? item.cost : 0;
+            daily[d].cost += (costVal * item.qty);
+          });
+        });
+        const labels = Object.keys(daily).reverse();
+        const sales = Object.values(daily).map(v => v.sales).reverse();
+        const profits = Object.values(daily).map(v => v.sales - v.cost).reverse();
+        return { chartLabels: labels, chartDataSales: sales, chartDataProfit: profits };
+      }, [filteredTx]);
+
+      // Render chart
+      useEffect(() => {
+        if (!chartRef.current) return;
+        if (chartInstance.current) chartInstance.current.destroy();
+
+        const ctx = chartRef.current.getContext('2d');
+        const salesGradient = ctx.createLinearGradient(0, 0, 0, 240);
+        salesGradient.addColorStop(0, 'rgba(59, 89, 152, 0.25)'); // deep slate-blue (sky-600)
+        salesGradient.addColorStop(1, 'rgba(59, 89, 152, 0.0)');
+
+        const profitGradient = ctx.createLinearGradient(0, 0, 0, 240);
+        profitGradient.addColorStop(0, 'rgba(16, 185, 129, 0.25)'); // emerald-500
+        profitGradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+        chartInstance.current = new Chart(chartRef.current, {
+          type: 'line',
+          data: {
+            labels: chartLabels,
+            datasets: [
+              {
+                label: 'Pendapatan',
+                data: chartDataSales,
+                borderColor: '#3b5998', // sky-600
+                backgroundColor: salesGradient,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#3b5998',
+                pointRadius: 3
+              },
+              {
+                label: 'Laba Bersih',
+                data: chartDataProfit,
+                borderColor: '#10b981', // emerald-500
+                backgroundColor: profitGradient,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#10b981',
+                pointRadius: 3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { position: 'top', labels: { font: { family: 'Inter', size: 10, weight: 'bold' } } },
+              tooltip: {
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                titleFont: { size: 12, weight: 'bold', family: 'Inter' },
+                bodyFont: { size: 11, family: 'Inter' },
+                padding: 12,
+                cornerRadius: 12,
+                callbacks: {
+                  label: function(context) {
+                    return ` ${context.dataset.label}: Rp ${context.raw.toLocaleString('id-ID')}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(0, 0, 0, 0.04)', drawBorder: false },
+                ticks: {
+                  callback: (value) => 'Rp ' + value.toLocaleString('id-ID'),
+                  font: { family: 'Inter', size: 10 },
+                  color: '#64748b'
+                }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { font: { family: 'Inter', size: 10 }, color: '#64748b' }
+              }
+            }
+          }
+        });
+
+        return () => { if (chartInstance.current) chartInstance.current.destroy(); };
+      }, [chartLabels, chartDataSales, chartDataProfit]);
+
+      return (
+        <div className="pb-16 md:pb-8 text-left">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-zinc-800">Dashboard Owner</h3>
+              <p className="text-sm text-zinc-500">Analisis bisnis, inventaris, dan kinerja karyawan berjalan</p>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <select value={filter} onChange={e => setFilter(e.target.value)} className="px-4 py-2.5 bg-white border border-zinc-200 rounded-xl font-semibold outline-none text-zinc-700 shadow-sm flex-1 sm:flex-none">
+                <option value="today">Hari Ini</option>
+                <option value="7days">7 Hari Terakhir</option>
+                <option value="month">Bulan Ini</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Cards metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-650 flex items-center justify-center flex-shrink-0">
+                <Icon name="wallet" size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Pendapatan</p>
+                <h4 className="text-xl font-extrabold text-zinc-850">Rp {metrics.revenue.toLocaleString('id-ID')}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center flex-shrink-0">
+                <Icon name="receipt" size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Total Modal (HPP)</p>
+                <h4 className="text-xl font-extrabold text-zinc-855">Rp {metrics.cost.toLocaleString('id-ID')}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <Icon name="trending-up" size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Laba Bersih</p>
+                <h4 className={`text-xl font-extrabold ${metrics.profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  Rp {metrics.profit.toLocaleString('id-ID')}
+                </h4>
+              </div>
+            </div>
+
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center flex-shrink-0">
+                <Icon name="shopping-bag" size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Transaksi</p>
+                <h4 className="text-xl font-extrabold text-zinc-850">{metrics.count} Nota</h4>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Sales Graph */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs lg:col-span-2 flex flex-col h-80">
+              <h4 className="font-bold text-sm text-zinc-800 mb-4">Tren Penjualan & Laba</h4>
+              <div className="flex-1 relative">
+                <canvas ref={chartRef}></canvas>
+              </div>
+            </div>
+
+            {/* Best Sellers */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs flex flex-col h-80">
+              <h4 className="font-bold text-sm text-zinc-800 mb-4">Produk Terlaris</h4>
+              <div className="flex-1 overflow-y-auto custom-scroll space-y-3">
+                {bestSellers.length === 0 ? (
+                  <p className="text-xs text-zinc-400 text-center py-16">Belum ada transaksi</p>
+                ) : (
+                  bestSellers.map((item, idx) => (
+                    <div key={item.id} className="flex justify-between items-center border-b border-zinc-50 pb-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-zinc-800 truncate">{idx + 1}. {item.name}</p>
+                        <p className="text-[10px] text-zinc-400">{item.category}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-zinc-800">{item.qty} pcs</p>
+                        <p className="text-[10px] text-zinc-400 font-medium">Rp {item.revenue.toLocaleString('id-ID')}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Shifts Monitoring */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs overflow-hidden flex flex-col max-h-96">
+              <h4 className="font-bold text-sm text-zinc-800 mb-4 flex items-center gap-2">
+                <Icon name="key-round" size={16} className="text-amber-500" />
+                <span>Pemantauan Shift Kasir</span>
+              </h4>
+              <div className="flex-1 overflow-auto custom-scroll">
+                <table className="w-full text-xs">
+                  <thead className="bg-zinc-50 font-bold text-zinc-550 border-b border-zinc-150">
+                    <tr>
+                      <th className="p-2 text-left">Kasir</th>
+                      <th className="p-2 text-left">Waktu Mulai</th>
+                      <th className="p-2 text-right">Modal Awal</th>
+                      <th className="p-2 text-right">Uang Laci</th>
+                      <th className="p-2 text-right">Selisih</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {shiftsList.length === 0 ? (
+                      <tr><td colSpan="5" className="p-4 text-center text-zinc-400">Tidak ada riwayat shift</td></tr>
+                    ) : (
+                      shiftsList.map(s => (
+                        <tr key={s.id} className="hover:bg-zinc-50/50">
+                          <td className="p-2 font-semibold text-zinc-700">{s.cashierName}</td>
+                          <td className="p-2 text-zinc-450">{new Date(s.startTime).toLocaleDateString('id-ID', {day:'numeric',month:'short'})} {new Date(s.startTime).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}</td>
+                          <td className="p-2 text-right text-zinc-700">Rp {s.startCash?.toLocaleString('id-ID')}</td>
+                          <td className="p-2 text-right font-bold text-zinc-800">
+                            {s.status === 'open' ? 'Shift Berjalan' : `Rp ${s.actualCash?.toLocaleString('id-ID')}`}
+                          </td>
+                          <td className={`p-2 text-right font-bold ${s.difference === 0 ? 'text-emerald-600' : s.difference > 0 ? 'text-sky-600' : 'text-rose-600'}`}>
+                            {s.status === 'open' ? '-' : s.difference === 0 ? 'Pas' : (s.difference > 0 ? '+' : '') + s.difference.toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Audit Logs */}
+            <div className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-xs overflow-hidden flex flex-col max-h-96">
+              <h4 className="font-bold text-sm text-zinc-800 mb-4 flex items-center gap-2">
+                <Icon name="history" size={16} className="text-sky-500" />
+                <span>Log Audit Aktivitas Staf</span>
+              </h4>
+              <div className="flex-1 overflow-auto custom-scroll space-y-3 text-left">
+                {auditList.length === 0 ? (
+                  <p className="text-xs text-zinc-400 text-center py-16">Belum ada riwayat audit log</p>
+                ) : (
+                  auditList.map(log => (
+                    <div key={log.id} className="p-3 bg-zinc-50 rounded-xl border border-zinc-100 text-xs">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-zinc-800">{log.action}</span>
+                        <span className="text-[10px] text-zinc-400 font-mono">{formatTimeAgo(log.timestamp)}</span>
+                      </div>
+                      <p className="text-zinc-600 text-[11px] leading-relaxed mb-1">{log.details}</p>
+                      <div className="text-[9px] text-zinc-450 font-medium">
+                        Oleh: {log.user} ({log.role})
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // 2. POS PAGE
     function POSPage() {
       const app = useContext(AppContext);
@@ -1389,6 +1854,25 @@
           }
         }
       }, [showMemberModal]);
+
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === 'F2') {
+            e.preventDefault();
+            const searchInput = document.querySelector('input[placeholder*="Cari menu"]');
+            if (searchInput) searchInput.focus();
+          } else if (e.key === 'F8') {
+            e.preventDefault();
+            if (app.cart.length > 0) {
+              setShowPaymentModal(true);
+            } else {
+              app.addToast('Keranjang belanja kosong', 'info');
+            }
+          }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, [app.cart]);
 
       const handleSaveMember = (e) => {
         e.preventDefault();
@@ -1687,32 +2171,59 @@
             if (item.qty <= 0) throw new Error("Jumlah item tidak boleh nol atau negatif");
           });
 
-          const newDb = getDB();
-          newDb.transactions.unshift(tx);
-          
-          // Deduct stock and validate
-          app.cart.forEach(item => {
-            const p = newDb.products.find(x => x.id === item.id);
-            if (p) {
-              const newStock = parseFloat((p.stock - item.qty).toFixed(3));
-              if (newStock < 0) {
-                throw new Error(`Stok produk "${p.name}" tidak mencukupi untuk transaksi ini.`);
+          let rpcSuccess = false;
+          if (sbClient && app.isOnline) {
+            try {
+              const { data: newCloudDb, error: rpcError } = await sbClient.rpc('process_checkout', { p_transaction: tx });
+              if (!rpcError && newCloudDb) {
+                localStorage.setItem(DB_KEY, JSON.stringify(newCloudDb));
+                rpcSuccess = true;
+                console.log('[Supabase RPC] Checkout sukses atomik di server');
+              } else {
+                console.warn('[Supabase RPC] Gagal, fallback ke lokal:', rpcError);
               }
-              p.stock = newStock;
-              p.updatedAt = new Date().toISOString();
-            }
-          });
-
-          // Award Member points
-          if (selectedMember) {
-            const pointsEarned = Math.floor(total / 10000);
-            const memberIdx = newDb.members.findIndex(m => m.id === selectedMember.id);
-            if (memberIdx !== -1) {
-              newDb.members[memberIdx].points += pointsEarned;
+            } catch (rpcExc) {
+              console.warn('[Supabase RPC] Exception, fallback ke lokal:', rpcExc);
             }
           }
 
-          saveDB(newDb);
+          if (!rpcSuccess) {
+            const newDb = getDB();
+            newDb.transactions.unshift(tx);
+            
+            // Deduct stock and validate locally
+            app.cart.forEach(item => {
+              const p = newDb.products.find(x => x.id === item.id);
+              if (p) {
+                const newStock = parseFloat((p.stock - item.qty).toFixed(3));
+                if (newStock < 0) {
+                  throw new Error(`Stok produk "${p.name}" tidak mencukupi untuk transaksi ini.`);
+                }
+                p.stock = newStock;
+                p.updatedAt = new Date().toISOString();
+              }
+            });
+
+            // Award Member points
+            if (selectedMember) {
+              const pointsEarned = Math.floor(total / 10000);
+              const memberIdx = newDb.members.findIndex(m => m.id === selectedMember.id);
+              if (memberIdx !== -1) {
+                newDb.members[memberIdx].points += pointsEarned;
+              }
+            }
+
+            saveDB(newDb);
+          }
+
+          // Catat audit log untuk manual discount di client
+          if (tx.discount > 0) {
+            logAuditAction('Diskon Manual', `Memberikan diskon senilai Rp ${tx.discount.toLocaleString('id-ID')} pada transaksi ${tx.id}`, app.user);
+          }
+
+          app.setLastTransaction(tx);
+          app.setShowSuccessModal(true);
+
           app.refreshDB();
           app.clearCart();
           setDiscount(0);
@@ -1725,11 +2236,6 @@
           if(window.innerWidth < 768) setMobileView('products');
           
           app.addToast(`Pembayaran sukses. Kembalian: Rp ${cashChange.toLocaleString('id-ID')}`, 'success');
-
-          // Trigger print popup
-          setTimeout(() => {
-            window.print();
-          }, 300);
         } catch (error) {
           setProcessing(false);
           console.error("Checkout error:", error);
@@ -2234,17 +2740,20 @@
                     /* REGULAR SINGLE PAYMENT METHOD FORM */
                     <div className="space-y-5">
                       <div className="flex bg-zinc-100 p-1 rounded-xl">
-                        <button onClick={() => setPayMethod('cash')} className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex justify-center items-center gap-2 ${payMethod === 'cash' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}>
-                          <Icon name="banknote" size={18} /> Tunai (Cash)
+                        <button onClick={() => setPayMethod('cash')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex justify-center items-center gap-1.5 ${payMethod === 'cash' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}>
+                          <Icon name="banknote" size={16} /> Tunai
                         </button>
-                        <button onClick={() => setPayMethod('qris')} className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex justify-center items-center gap-2 ${payMethod === 'qris' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}>
-                          <Icon name="qr-code" size={18} /> QRIS / Digital
+                        <button onClick={() => setPayMethod('qris')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex justify-center items-center gap-1.5 ${payMethod === 'qris' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}>
+                          <Icon name="qr-code" size={16} /> QRIS
+                        </button>
+                        <button onClick={() => setPayMethod('transfer')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition flex justify-center items-center gap-1.5 ${payMethod === 'transfer' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500 hover:text-zinc-700'}`}>
+                          <Icon name="landmark" size={16} /> Transfer
                         </button>
                       </div>
 
-                      {payMethod === 'cash' ? (
+                      {payMethod === 'cash' && (
                         <form onSubmit={handleCheckout}>
-                          <label className="block text-sm font-medium text-zinc-700 mb-2">Uang Diterima</label>
+                          <label className="block text-sm font-medium text-zinc-700 mb-2 text-left">Uang Diterima</label>
                           <input 
                             type="text" 
                             value={paymentAmount ? parseInt(paymentAmount).toLocaleString('id-ID') : ''} 
@@ -2275,12 +2784,30 @@
                             {processing ? 'Memproses...' : 'Selesaikan Pembayaran'}
                           </button>
                         </form>
-                      ) : (
+                      )}
+
+                      {payMethod === 'qris' && (
                         <div className="text-center">
                           <QRISDisplay totalAmount={total} qrisMode={qrisMode} setQrisMode={setQrisMode} selectedSavedScanId={selectedSavedScanId} setSelectedSavedScanId={setSelectedSavedScanId} db={db} setQrisZoom={setQrisZoom} />
                           <button onClick={handleCheckout} disabled={processing} className="w-full py-4 bg-emerald-600 disabled:bg-zinc-300 text-white rounded-xl font-bold text-lg hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/10 mt-5">
                              {processing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Icon name="check-circle" size={22} />}
                              Verifikasi & Selesaikan
+                          </button>
+                        </div>
+                      )}
+
+                      {payMethod === 'transfer' && (
+                        <div className="space-y-4 text-left">
+                          <div className="bg-sky-50 border border-sky-100 rounded-xl p-4 text-xs font-medium text-sky-850 space-y-1.5">
+                            <p className="font-bold text-sm text-sky-950">Rekening Pembayaran Toko</p>
+                            <p>Bank Transfer : <span className="font-mono font-bold text-sky-900">BCA - 1234567890</span></p>
+                            <p>Atas Nama     : <span className="font-bold text-sky-900">POS SMILE SEJAHTERA</span></p>
+                            <p className="text-[10px] text-sky-600 font-semibold pt-1 border-t border-sky-100 mt-2">Harap verifikasi mutasi masuk pada mobile banking Anda sebelum menyelesaikan transaksi.</p>
+                          </div>
+                          
+                          <button onClick={handleCheckout} disabled={processing} className="w-full py-4 bg-sky-600 disabled:bg-zinc-300 text-white rounded-xl font-bold text-lg hover:bg-sky-700 transition flex items-center justify-center gap-2 shadow-lg shadow-sky-600/10">
+                             {processing ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Icon name="check-circle" size={22} />}
+                             Konfirmasi Transfer & Selesaikan
                           </button>
                         </div>
                       )}
@@ -2604,6 +3131,149 @@
       const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
       const displayedProducts = sortedProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+      const handleExportCSV = () => {
+        try {
+          const db = getDB();
+          const activeProds = db.products.filter(p => p.active !== false);
+          const headers = ['SKU', 'Nama', 'Kategori', 'Harga Jual', 'Modal', 'Stok', 'Harga Grosir', 'Minimal Grosir', 'Batas Minimum Stok'];
+          const rows = activeProds.map(p => [
+            p.sku || '',
+            p.name || '',
+            p.category || '',
+            p.price || 0,
+            p.cost || 0,
+            p.stock || 0,
+            p.wholesalePrice || 0,
+            p.wholesaleMinQty || 0,
+            p.minStock || 5
+          ]);
+          const csvContent = [headers, ...rows].map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n");
+          const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.setAttribute("href", url);
+          link.setAttribute("download", `Data_Produk_${new Date().toISOString().slice(0,10)}.csv`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          app.addToast('Data produk berhasil diekspor ke CSV', 'success');
+        } catch (err) {
+          console.error("Gagal ekspor CSV:", err);
+          app.addToast('Gagal ekspor data produk', 'error');
+        }
+      };
+
+      const handleImportCSV = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const text = event.target.result;
+            const lines = text.split(/\r\n|\n/);
+            if (lines.length <= 1) {
+              app.addToast('File CSV kosong atau tidak valid', 'error');
+              return;
+            }
+            
+            const db = getDB();
+            let importedCount = 0;
+            let updatedCount = 0;
+            const nowStr = new Date().toISOString();
+            
+            const parseCSVLine = (line) => {
+              const result = [];
+              let current = '';
+              let inQuotes = false;
+              for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                  inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                  result.push(current.trim());
+                  current = '';
+                } else {
+                  current += char;
+                }
+              }
+              result.push(current.trim());
+              return result;
+            };
+            
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              
+              const columns = parseCSVLine(line);
+              if (columns.length < 6) continue;
+              
+              const sku = columns[0] || `SKU${Date.now().toString().slice(-4)}_${i}`;
+              const name = columns[1];
+              const category = columns[2] || 'Lainnya';
+              const price = parseFloat(columns[3]) || 0;
+              const cost = parseFloat(columns[4]) || 0;
+              const stock = parseFloat(columns[5]) || 0;
+              const wholesalePrice = parseFloat(columns[6]) || 0;
+              const wholesaleMinQty = parseFloat(columns[7]) || 0;
+              const minStock = parseFloat(columns[8]) || 5;
+              
+              if (!name) continue;
+              
+              const existingIdx = db.products.findIndex(p => p.sku.toLowerCase() === sku.toLowerCase());
+              if (existingIdx !== -1) {
+                db.products[existingIdx] = {
+                  ...db.products[existingIdx],
+                  name,
+                  category,
+                  price,
+                  cost,
+                  stock,
+                  wholesalePrice,
+                  wholesaleMinQty,
+                  minStock,
+                  active: true,
+                  updatedAt: nowStr
+                };
+                updatedCount++;
+              } else {
+                db.products.push({
+                  id: 'p_' + Date.now() + '_' + i,
+                  sku,
+                  name,
+                  category,
+                  price,
+                  cost,
+                  stock,
+                  wholesalePrice,
+                  wholesaleMinQty,
+                  minStock,
+                  active: true,
+                  createdAt: nowStr,
+                  updatedAt: nowStr
+                });
+                importedCount++;
+              }
+              
+              if (category && !db.categories.includes(category)) {
+                db.categories.push(category);
+              }
+            }
+            
+            saveDB(db);
+            app.refreshDB();
+            logAuditAction('Impor CSV', `Mengimpor produk via CSV secara massal. ${importedCount} baru, ${updatedCount} diperbarui.`, app.user);
+            app.addToast(`Impor selesai: ${importedCount} baru, ${updatedCount} diperbarui.`, 'success');
+          } catch (err) {
+            console.error("Gagal impor CSV:", err);
+            app.addToast('Gagal memproses file CSV', 'error');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      };
+
       const handleSave = (data) => {
         const valError = validateProductData(data, editProduct ? editProduct.id : null);
         if (valError) {
@@ -2622,6 +3292,7 @@
               updatedAt: nowStr
             };
           }
+          logAuditAction('Ubah Produk', `Mengubah produk "${data.name}" (SKU: ${data.sku}). Harga: Rp ${data.price}, Stok: ${data.stock}`, app.user);
           app.addToast('Produk diperbarui', 'success');
         } else {
           db.products.push({ 
@@ -2631,6 +3302,7 @@
             createdAt: nowStr,
             updatedAt: nowStr
           });
+          logAuditAction('Tambah Produk', `Menambahkan produk baru "${data.name}" (SKU: ${data.sku}) dengan stok ${data.stock}`, app.user);
           app.addToast('Produk ditambahkan', 'success');
         }
         saveDB(db);
@@ -2644,8 +3316,10 @@
           const db = getDB();
           const idx = db.products.findIndex(p => p.id === id);
           if (idx !== -1) {
-            db.products[idx].active = false;
-            db.products[idx].updatedAt = new Date().toISOString();
+            const prod = db.products[idx];
+            prod.active = false;
+            prod.updatedAt = new Date().toISOString();
+            logAuditAction('Hapus Produk', `Menghapus produk "${prod.name}" (SKU: ${prod.sku})`, app.user);
             saveDB(db);
             app.refreshDB();
             app.addToast('Produk dihapus', 'success');
@@ -2660,18 +3334,33 @@
               <h3 className="text-xl font-bold text-zinc-800">Manajemen Produk</h3>
               <p className="text-sm text-zinc-500">Kelola katalog dan stok barang</p>
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto mt-2 sm:mt-0">
               <button 
                 onClick={() => setShowCategoryModal(true)} 
-                className="w-full sm:w-auto px-5 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-sm"
+                className="px-4 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm"
               >
-                <Icon name="tags" size={18} /> Kelola Kategori
+                <Icon name="tags" size={16} /> Kategori
               </button>
+              
+              {/* Import/Export CSV */}
+              <button 
+                onClick={handleExportCSV} 
+                className="px-4 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm"
+                title="Ekspor Inventaris ke CSV"
+              >
+                <Icon name="download" size={16} /> Ekspor
+              </button>
+              
+              <label className="px-4 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
+                <Icon name="upload" size={16} /> Impor
+                <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+              </label>
+
               <button 
                 onClick={() => { setEditProduct(null); setShowForm(true); }} 
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition bg-zinc-900 hover:bg-zinc-800 text-white shadow-md"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition bg-zinc-900 hover:bg-zinc-800 text-white shadow-md"
               >
-                <Icon name="plus" size={18} /> Tambah Produk
+                <Icon name="plus" size={16} /> Tambah Produk
               </button>
             </div>
           </div>
@@ -2879,7 +3568,8 @@
         wholesalePrice: product?.wholesalePrice || '',
         wholesaleMinQty: product?.wholesaleMinQty || '',
         taxIncluded: product?.taxIncluded || false,
-        openPrice: product?.openPrice || false
+        openPrice: product?.openPrice || false,
+        minStock: product?.minStock || 5
       });
 
       const handleImage = (e) => {
@@ -2949,7 +3639,11 @@
             </div>
             <div className="text-left">
               <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Stok</label>
-              <input type="number" value={form.stock} onChange={e => setForm({...form, stock: parseInt(e.target.value) || 0})} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none font-medium text-zinc-800 focus:bg-white focus:border-zinc-500" required />
+              <input type="number" value={form.stock} onChange={e => setForm({...form, stock: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none font-medium text-zinc-800 focus:bg-white focus:border-zinc-500" required />
+            </div>
+            <div className="text-left">
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Batas Minimum Stok</label>
+              <input type="number" value={form.minStock} onChange={e => setForm({...form, minStock: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none font-medium text-zinc-800 focus:bg-white focus:border-zinc-500" required placeholder="Contoh: 5" />
             </div>
             <div className="text-left">
               <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Harga Jika Beli Banyak (Grosir)</label>
@@ -3193,10 +3887,20 @@
       const [showShiftModal, setShowShiftModal] = useState(null);
 
       const handleEditClick = (tx) => {
-        if (app.user?.role === 'admin') {
+        if (['admin', 'owner'].includes(app.user?.role)) {
           setEditTx(tx);
         } else {
           setAuthAction('edit');
+          setTargetTx(tx);
+          setShowAdminAuthModal(true);
+        }
+      };
+
+      const handleDeleteClick = (tx) => {
+        if (['admin', 'owner'].includes(app.user?.role)) {
+          handleDeleteTransaction(tx.id);
+        } else {
+          setAuthAction('delete');
           setTargetTx(tx);
           setShowAdminAuthModal(true);
         }
@@ -3593,7 +4297,7 @@
                       </td>
                       <td className="px-6 py-4 text-right font-bold text-zinc-800">Rp {t.total?.toLocaleString('id-ID')}</td>
                       <td className="px-6 py-4">
-                        {app.user?.role === 'admin' && (
+                        {['admin', 'owner'].includes(app.user?.role) && (
                           <div className="flex justify-end gap-2 pr-2">
                             <button onClick={() => handleEditClick(t)} className="p-2 text-sky-600 bg-sky-50 hover:bg-sky-100 rounded-lg transition" title="Edit Transaksi"><Icon name="edit" size={14} /></button>
                             <button onClick={() => handleDeleteClick(t)} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition" title="Hapus Transaksi"><Icon name="trash-2" size={14} /></button>
@@ -3614,7 +4318,7 @@
           <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden mb-6">
             <div className="px-6 py-5 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
               <h4 className="font-bold text-zinc-800">Laporan Shift & Kas Mandiri</h4>
-              {app.user?.role === 'admin' && (
+              {['admin', 'owner'].includes(app.user?.role) && (
               <button 
                 onClick={() => setShowShiftModal({ mode: 'add' })}
                 className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95 animate-[scaleIn_0.15s_ease-out]"
@@ -3660,7 +4364,7 @@
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          {app.user?.role === 'admin' && (
+                          {['admin', 'owner'].includes(app.user?.role) && (
                           <div className="flex justify-end gap-2 pr-2">
                             <button onClick={() => setShowShiftModal({ mode: 'edit', shift: s })} className="p-2 text-sky-600 bg-sky-50 hover:bg-sky-100 rounded-lg transition" title="Edit Shift"><Icon name="edit" size={14} /></button>
                             <button onClick={() => handleDeleteShift(s.id)} className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition" title="Hapus Shift"><Icon name="trash-2" size={14} /></button>
@@ -3922,11 +4626,11 @@
       const handleSubmit = (e) => {
         e.preventDefault();
         const db = getDB();
-        const admin = db.users.find(u => u.role === 'admin' && u.password === password && u.active);
+        const admin = db.users.find(u => ['admin', 'owner'].includes(u.role) && u.password === password && u.active);
         if (admin) {
           onConfirm();
         } else {
-          setError('Password Admin salah!');
+          setError('Password Admin/Owner salah!');
           setPassword('');
           setTimeout(() => setError(''), 2500);
         }
@@ -3968,7 +4672,7 @@
 
     // ==================== CASHIER REPORT MODAL ====================
     function CashierReportModal({ onClose, app }) {
-      const admins = getDB().users.filter(u => u.role === 'admin' && u.active);
+      const admins = getDB().users.filter(u => ['admin', 'owner'].includes(u.role) && u.active);
       const [targetAdminId, setTargetAdminId] = useState(admins[0]?.id || '');
       const [subject, setSubject] = useState('');
       const [message, setMessage] = useState('');
@@ -4012,7 +4716,7 @@
               <div>
                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Tujuan Admin</label>
                 <select value={targetAdminId} onChange={e => setTargetAdminId(e.target.value)} className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl outline-none font-medium text-zinc-800 focus:border-sky-500">
-                  {admins.length > 0 ? admins.map(a => <option key={a.id} value={a.id}>{a.name} (Admin)</option>) : <option value="">Tidak ada admin aktif</option>}
+                  {admins.length > 0 ? admins.map(a => <option key={a.id} value={a.id}>{a.name} ({a.role === 'owner' ? 'Owner' : 'Admin'})</option>) : <option value="">Tidak ada admin/owner aktif</option>}
                 </select>
               </div>
               <div>
@@ -4145,7 +4849,7 @@
               <h3 className="text-xl font-bold text-zinc-800">Manajemen Pengguna</h3>
               <p className="text-sm text-zinc-500">{db.users.length} akun terdaftar</p>
             </div>
-            {app.user?.role === 'admin' && (
+            {['admin', 'owner'].includes(app.user?.role) && (
             <button
               onClick={() => { setEditingUser(null); setShowForm(true); }}
               className="w-full sm:w-auto px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-2 shadow-md transition"
@@ -4174,7 +4878,7 @@
                   <th className="px-5 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">Role</th>
                   <th className="px-5 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">Status</th>
                   <th className="px-5 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider">Terakhir Update</th>
-                  {app.user?.role === 'admin' && (
+                  {['admin', 'owner'].includes(app.user?.role) && (
                     <th className="px-5 py-3 text-xs font-bold text-zinc-500 uppercase tracking-wider text-right">Aksi</th>
                   )}
                 </tr>
@@ -4203,7 +4907,7 @@
                       </span>
                     </td>
                     <td className="px-5 py-4 text-sm text-zinc-500">{formatTimeAgo(u.updatedAt || u.createdAt)}</td>
-                    {app.user?.role === 'admin' && (
+                    {['admin', 'owner'].includes(app.user?.role) && (
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <button onClick={() => setScannerUser(u)} className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg" title="Ambil Foto"><Icon name="camera" size={16} /></button>
@@ -4237,7 +4941,7 @@
                     </div>
                   </div>
                 </div>
-                {app.user?.role === 'admin' && (
+                {['admin', 'owner'].includes(app.user?.role) && (
                 <div className="grid grid-cols-4 gap-2 mt-4">
                   <button onClick={() => setScannerUser(u)} className="py-2 bg-amber-50 text-amber-600 rounded-xl flex justify-center"><Icon name="camera" size={17} /></button>
                   <button onClick={() => { setEditingUser(u); setShowForm(true); }} className="py-2 bg-sky-50 text-sky-600 rounded-xl flex justify-center"><Icon name="pencil" size={17} /></button>
@@ -4645,10 +5349,10 @@
                 <div>
                   <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Role</label>
                   <select value={role} onChange={e => setRole(e.target.value)} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:border-sky-500 text-sm font-medium text-zinc-800">
+                    {role === 'owner' && <option value="owner">Pemilik (Owner)</option>}
                     <option value="admin">Admin</option>
                     <option value="cashier">Kasir</option>
                     <option value="dapur">Dapur</option>
-                    <option value="owner">Pemilik (Owner)</option>
                     <option value="manager">Manajer</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="staff">Staf</option>
@@ -4821,12 +5525,16 @@
       const app = useContext(AppContext);
       const { user, page, sidebar } = app;
       
-      const menuItems = [
-        { id: 'pos', icon: 'shopping-cart', label: 'Kasir POS' },
-        { id: 'products', icon: 'package', label: 'Produk' },
-        { id: 'reports', icon: 'bar-chart-3', label: 'Laporan' },
-        { id: 'users', icon: 'users', label: 'Pengguna' }
-      ];
+      const menuItems = [];
+      if (user?.role === 'owner') {
+        menuItems.push({ id: 'owner_dashboard', icon: 'layout-dashboard', label: 'Dashboard Owner' });
+      }
+      menuItems.push({ id: 'pos', icon: 'shopping-cart', label: 'Kasir POS' });
+      if (['admin', 'owner'].includes(user?.role)) {
+        menuItems.push({ id: 'products', icon: 'package', label: 'Produk' });
+        menuItems.push({ id: 'reports', icon: 'bar-chart-3', label: 'Laporan' });
+        menuItems.push({ id: 'users', icon: 'users', label: 'Pengguna' });
+      }
 
       return (
         <aside className={`${sidebar ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-y-0 left-0 z-40 w-64 bg-zinc-900 text-white transition-transform duration-300 flex flex-col`}>
@@ -4894,12 +5602,16 @@
 
     function BottomNav() {
       const app = useContext(AppContext);
-      const menuItems = [
-        { id: 'pos', icon: 'shopping-cart', label: 'POS' },
-        { id: 'products', icon: 'package', label: 'Produk' },
-        { id: 'reports', icon: 'bar-chart-3', label: 'Laporan' },
-        { id: 'users', icon: 'users', label: 'Akun' }
-      ];
+      const menuItems = [];
+      if (app.user?.role === 'owner') {
+        menuItems.push({ id: 'owner_dashboard', icon: 'layout-dashboard', label: 'Dashboard' });
+      }
+      menuItems.push({ id: 'pos', icon: 'shopping-cart', label: 'POS' });
+      if (['admin', 'owner'].includes(app.user?.role)) {
+        menuItems.push({ id: 'products', icon: 'package', label: 'Produk' });
+        menuItems.push({ id: 'reports', icon: 'bar-chart-3', label: 'Laporan' });
+        menuItems.push({ id: 'users', icon: 'users', label: 'Akun' });
+      }
 
       return (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 flex justify-around items-center h-16 z-40 pb-safe shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
@@ -4917,7 +5629,13 @@
       const app = useContext(AppContext);
       const [showNotif, setShowNotif] = useState(false);
       const [now, setNow] = useState(new Date());
-      const titles = { pos: 'Point of Sale', products: 'Produk', reports: 'Laporan', users: 'Pengguna' };
+      const titles = { owner_dashboard: 'Dashboard Owner', pos: 'Point of Sale', products: 'Produk', reports: 'Laporan', users: 'Pengguna' };
+      
+      const lowStockItems = useMemo(() => {
+        return getDB().products.filter(p => p.active !== false && p.stock <= (p.minStock || 5));
+      }, [app.dbVersion]);
+      const lowStockCount = lowStockItems.length;
+      const [showLowStock, setShowLowStock] = useState(false);
       
       useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000);
@@ -4945,6 +5663,12 @@
           <h2 className="text-xl font-bold text-zinc-800">{titles[app.page]}</h2>
           
           <div className="ml-auto flex items-center gap-3">
+            {/* Indikator Koneksi Internet */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${app.isOnline ? 'bg-emerald-50 border-emerald-250 text-emerald-600' : 'bg-rose-50 border-rose-250 text-rose-600'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${app.isOnline ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`}></div>
+              <span className="hidden md:inline">{app.isOnline ? 'Online' : 'Offline'}</span>
+            </div>
+
             <button 
               onClick={() => app.setShowSyncModal(true)} 
               className={`p-2 rounded-xl border flex items-center gap-1.5 transition text-xs font-semibold ${app.syncEnabled ? 'bg-emerald-50 border-emerald-250 text-emerald-600 hover:bg-emerald-100' : 'bg-zinc-50 border-zinc-200 text-zinc-500 hover:bg-zinc-100'}`}
@@ -4962,7 +5686,50 @@
               <Icon name="lock" size={16} />
             </button>
 
-            {app.user?.role === 'admin' && (
+            {/* Notifikasi Stok Rendah untuk Admin/Owner */}
+            {['admin', 'owner'].includes(app.user?.role) && (
+              <div className="relative">
+                <button 
+                  onClick={() => setShowLowStock(!showLowStock)} 
+                  className={`p-2 bg-zinc-50 border border-zinc-200 hover:bg-zinc-100 rounded-xl transition flex items-center justify-center ${lowStockCount > 0 ? 'text-rose-500 border-rose-250' : 'text-zinc-500'}`}
+                  title="Peringatan Stok Rendah"
+                >
+                  <Icon name="alert-triangle" size={16} />
+                  {lowStockCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-bold">{lowStockCount}</span>
+                  )}
+                </button>
+
+                {showLowStock && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white border border-zinc-200 rounded-2xl shadow-xl z-[100] animate-[fadeIn_0.2s_ease-out] overflow-hidden">
+                    <div className="p-4 bg-zinc-50 border-b border-zinc-100 flex justify-between items-center text-left">
+                      <span className="font-bold text-zinc-800 text-sm">Stok Rendah</span>
+                      <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold">{lowStockCount} Peringatan</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto custom-scroll divide-y divide-zinc-100 text-left">
+                      {lowStockItems.length === 0 ? (
+                        <div className="p-6 text-center text-zinc-400 text-xs font-medium">Semua stok aman!</div>
+                      ) : (
+                        lowStockItems.map(p => (
+                          <div key={p.id} className="p-3 flex justify-between items-center text-xs">
+                            <div>
+                              <p className="font-bold text-zinc-800">{p.name}</p>
+                              <p className="text-zinc-500 text-[10px] font-mono">{p.sku}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100">{p.stock} pcs</span>
+                              <p className="text-[9px] text-zinc-450 mt-1">Min: {p.minStock || 5}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {['admin', 'owner'].includes(app.user?.role) && (
               <div className="relative">
                 <button 
                   onClick={() => setShowNotif(!showNotif)} 
@@ -5177,13 +5944,133 @@
     }
 
     // ==================== MAIN APP ====================
+    // ==================== TRANSACTION SUCCESS MODAL ====================
+    function TransactionSuccessModal({ transaction, onClose }) {
+      const [waNumber, setWaNumber] = useState('');
+      const [emailAddr, setEmailAddr] = useState('');
+
+      const getReceiptText = () => {
+        let text = `*SMILE POS - NOTA TRANSAKSI*\n`;
+        text += `No. Nota: ${transaction.id}\n`;
+        text += `Tanggal: ${new Date(transaction.date).toLocaleString('id-ID')}\n`;
+        text += `Kasir: ${transaction.cashier}\n`;
+        if (transaction.memberName) text += `Pelanggan: ${transaction.memberName}\n`;
+        text += `----------------------------------------\n`;
+        transaction.items.forEach(item => {
+          text += `${item.name}\n  ${item.qty} x Rp ${item.effectivePrice.toLocaleString('id-ID')} = Rp ${(item.qty * item.effectivePrice).toLocaleString('id-ID')}\n`;
+        });
+        text += `----------------------------------------\n`;
+        text += `Subtotal: Rp ${transaction.subtotal.toLocaleString('id-ID')}\n`;
+        if (transaction.tax > 0) text += `PPN (10%): Rp ${transaction.tax.toLocaleString('id-ID')}\n`;
+        if (transaction.discount > 0) text += `Diskon: -Rp ${transaction.discount.toLocaleString('id-ID')}\n`;
+        text += `*TOTAL: Rp ${transaction.total.toLocaleString('id-ID')}*\n`;
+        text += `Bayar: Rp ${transaction.payment.toLocaleString('id-ID')} (${transaction.method.toUpperCase()})\n`;
+        text += `Kembali: Rp ${transaction.change.toLocaleString('id-ID')}\n\n`;
+        text += `Terima kasih telah berbelanja!`;
+        return text;
+      };
+
+      const sendWhatsApp = () => {
+        let num = waNumber.trim().replace(/[^0-9]/g, '');
+        if (!num) {
+          alert('Masukkan nomor WhatsApp yang valid');
+          return;
+        }
+        if (num.startsWith('0')) {
+          num = '62' + num.slice(1);
+        }
+        const text = encodeURIComponent(getReceiptText());
+        window.open(`https://api.whatsapp.com/send?phone=${num}&text=${text}`, '_blank');
+      };
+
+      const sendEmail = () => {
+        const mail = emailAddr.trim();
+        if (!mail || !mail.includes('@')) {
+          alert('Masukkan alamat email yang valid');
+          return;
+        }
+        const subject = encodeURIComponent(`Nota Transaksi ${transaction.id} - Smile POS`);
+        const body = encodeURIComponent(getReceiptText());
+        window.open(`mailto:${mail}?subject=${subject}&body=${body}`, '_blank');
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out] no-print">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-[scaleIn_0.3s_ease-out] border border-zinc-200">
+            <div className="p-6 bg-emerald-50 text-center text-emerald-800 border-b border-emerald-100">
+              <div className="w-16 h-16 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/20">
+                <Icon name="check" size={32} />
+              </div>
+              <h3 className="text-xl font-bold">Pembayaran Sukses</h3>
+              <p className="text-sm text-emerald-600 mt-1">Kembalian: Rp {transaction.change.toLocaleString('id-ID')}</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <button 
+                onClick={() => window.print()} 
+                className="w-full py-3.5 bg-zinc-900 text-white rounded-xl font-semibold hover:bg-zinc-800 transition shadow-md flex items-center justify-center gap-2"
+              >
+                <Icon name="printer" size={18} /> Cetak Struk Fisik
+              </button>
+
+              <div className="border-t border-zinc-100 pt-4 text-left">
+                <h4 className="font-bold text-xs text-zinc-500 uppercase tracking-wider mb-2.5">Kirim Struk Digital</h4>
+                
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="No WhatsApp (contoh: 0812...)" 
+                      value={waNumber} 
+                      onChange={e => setWaNumber(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-xs font-semibold"
+                    />
+                    <button 
+                      onClick={sendWhatsApp}
+                      className="px-4 py-2 bg-emerald-605 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition"
+                    >
+                      Kirim WA
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input 
+                      type="email" 
+                      placeholder="Alamat Email..." 
+                      value={emailAddr} 
+                      onChange={e => setEmailAddr(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl outline-none focus:bg-white text-xs font-semibold"
+                    />
+                    <button 
+                      onClick={sendEmail}
+                      className="px-4 py-2 bg-sky-650 hover:bg-sky-700 text-white font-bold rounded-xl text-xs transition"
+                    >
+                      Kirim Email
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-zinc-50 border-t border-zinc-100 flex gap-2">
+              <button 
+                onClick={onClose} 
+                className="w-full py-3 bg-zinc-250 hover:bg-zinc-300 text-zinc-850 rounded-xl font-bold transition text-sm"
+              >
+                Selesai / Transaksi Baru
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================== MAIN APP COMPONENT ====================
     function App() {
       const appState = useAppState();
 
-
-
       const isOutsideHours = isOutsideOperationalHours();
-      const showHoursBlock = appState.user && appState.user.role !== 'admin' && isOutsideHours && !appState.bypassApproved;
+      const showHoursBlock = appState.user && !['admin', 'owner'].includes(appState.user.role) && isOutsideHours && !appState.bypassApproved;
 
       return (
         <AppContext.Provider value={appState}>
@@ -5200,11 +6087,11 @@
                 <Header />
                 <main className="flex-1 overflow-y-auto p-4 md:p-6 custom-scroll">
                   <div className="max-w-7xl mx-auto h-full">
-                    {appState.page === 'pos' && (appState.user?.role !== 'admin' ? (appState.activeShift ? <POSPage /> : <BukaShiftPage />) : <POSPage />)}
+                    {appState.page === 'owner_dashboard' && <OwnerDashboard />}
+                    {appState.page === 'pos' && (!['admin', 'owner'].includes(appState.user?.role) ? (appState.activeShift ? <POSPage /> : <BukaShiftPage />) : <POSPage />)}
                     {appState.page === 'products' && <ProductsPage />}
                     {appState.page === 'reports' && <ReportsPage />}
                     {appState.page === 'users' && <UsersPage />}
-
                   </div>
                 </main>
                 <BottomNav />
@@ -5226,6 +6113,90 @@
 
           {appState.showSyncModal && (
             <SyncModal appState={appState} />
+          )}
+
+          {appState.showSuccessModal && appState.lastTransaction && (
+            <TransactionSuccessModal 
+              transaction={appState.lastTransaction} 
+              onClose={() => {
+                appState.setShowSuccessModal(false);
+                appState.setLastTransaction(null);
+              }}
+            />
+          )}
+
+          {/* Hidden Printable Receipt */}
+          {appState.lastTransaction && (
+            <div className="print-receipt print-only">
+              <div className="text-center font-bold mb-2">
+                <h3 className="text-base font-bold">SMILE POS</h3>
+                <p className="text-[9px]">Sistem Kasir Pintar</p>
+                <p className="text-[9px] border-b border-dashed border-zinc-400 pb-1">Jl. POS Sejahtera No. 88</p>
+              </div>
+              
+              <div className="text-[9px] mb-2 font-mono">
+                <div>No. Nota: {appState.lastTransaction.id}</div>
+                <div>Tanggal : {new Date(appState.lastTransaction.date).toLocaleString('id-ID')}</div>
+                <div>Kasir   : {appState.lastTransaction.cashier}</div>
+                {appState.lastTransaction.memberName && <div>Pelanggan: {appState.lastTransaction.memberName}</div>}
+                <div className="border-b border-dashed border-zinc-400 my-1"></div>
+              </div>
+              
+              <div className="text-[9px] font-mono space-y-1">
+                {appState.lastTransaction.items.map(item => (
+                  <div key={item.id}>
+                     <div className="font-semibold">{item.name}</div>
+                     <div className="flex justify-between pl-2">
+                       <span>{item.qty} x Rp {item.effectivePrice.toLocaleString('id-ID')}</span>
+                       <span>Rp {(item.qty * item.effectivePrice).toLocaleString('id-ID')}</span>
+                     </div>
+                  </div>
+                ))}
+                <div className="border-b border-dashed border-zinc-400 my-1"></div>
+              </div>
+              
+              <div className="text-[9px] font-mono space-y-0.5 text-right pl-6">
+                <div className="flex justify-between font-mono">
+                  <span>Subtotal:</span>
+                  <span>Rp {appState.lastTransaction.subtotal.toLocaleString('id-ID')}</span>
+                </div>
+                {appState.lastTransaction.tax > 0 && (
+                  <div className="flex justify-between font-mono">
+                    <span>PPN (10%):</span>
+                    <span>Rp {appState.lastTransaction.tax.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {appState.lastTransaction.discount > 0 && (
+                  <div className="flex justify-between font-mono text-rose-600">
+                    <span>Diskon:</span>
+                    <span>-Rp {appState.lastTransaction.discount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {appState.lastTransaction.rounding !== 0 && (
+                  <div className="flex justify-between font-mono">
+                    <span>Pembulatan:</span>
+                    <span>Rp {appState.lastTransaction.rounding.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                <div className="border-t border-double border-zinc-400 pt-1 flex justify-between font-bold">
+                  <span>TOTAL:</span>
+                  <span>Rp {appState.lastTransaction.total.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between font-mono">
+                  <span>Bayar ({appState.lastTransaction.method.toUpperCase()}):</span>
+                  <span>Rp {appState.lastTransaction.payment.toLocaleString('id-ID')}</span>
+                </div>
+                <div className="flex justify-between font-mono">
+                  <span>Kembali:</span>
+                  <span>Rp {appState.lastTransaction.change.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+              
+              <div className="text-center font-mono text-[8px] mt-4 border-t border-dashed border-zinc-400 pt-2">
+                <p>Terima Kasih atas Kunjungan Anda</p>
+                <p>Smile POS - Layanan POS Pintar</p>
+              </div>
+            </div>
           )}
 
           <div className="fixed top-4 right-4 md:top-6 md:right-6 z-[9999] flex flex-col items-end pointer-events-none">
